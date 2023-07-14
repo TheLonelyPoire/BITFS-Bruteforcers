@@ -12,6 +12,7 @@
 #include "../Common/BruteforcerStructs.hpp"
 #include "../Common/Camera.cuh"
 #include "../Common/Floor.cuh"
+#include "../Common/Movement.cuh"
 #include "../Common/Stick.cuh"
 #include "../Common/Surface.cuh"
 #include "../Common/Trig.cuh"
@@ -70,103 +71,11 @@ __device__ AirInfo sim_airstep(float* initialPos, float initialSpeed, int initia
 
     Surface* floor;
     float floorheight;
-    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floorsG);
+    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floors);
     nextPos[1] = fmaxf(floorheight, nextPos[1]);
 
     struct AirInfo solution;
     solution.endSpeed = initialSpeed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-
-    return solution;
-}
-
-
-// computes 1QF of crouchslide, given stick position, starting position, starting speed, starting facing angle, camera angle.
-// will be totally accurate.
-__device__ FancySlideInfo sim_slide(StickTableData stick, float* startPos, float vX, float vZ, int faceAngle, int slideYaw, int camera) {
-    // initialize some variables we'll be reusing because they get updated
-    float nextPos[3];
-    nextPos[0] = startPos[0];
-    nextPos[1] = startPos[1];
-    nextPos[2] = startPos[2];
-    int facingAngle = fix(faceAngle);
-    int slidingYaw = fix(slideYaw);
-    int cameraYaw = camera;
-
-    float intendedMag = ((stick.magnitude / 64.0f) * (stick.magnitude / 64.0f)) * 32.0f;
-
-    // and the angle stuff
-    int intendedDYaw = stick.angle + cameraYaw - slidingYaw;
-    intendedDYaw = fix(intendedDYaw);
-    float forward = gCosineTableG[intendedDYaw >> 4];
-    float sideward = gSineTableG[intendedDYaw >> 4];
-
-    // 10k can be neglected since we always go backwards. and the 10k loss factor stuff.
-
-    float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
-
-    // and the speed updating from sliding stuff
-    float velX = vX;
-    float velZ = vZ;
-    float oldSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX += velZ * (intendedMag / 32.0f) * sideward * 0.05f;
-    velZ -= velX * (intendedMag / 32.0f) * sideward * 0.05f;
-    float newSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX = velX * oldSpeed / newSpeed;
-    velZ = velZ * oldSpeed / newSpeed;
-
-    Surface* floor;
-    float floorHeight;
-    int floorIdx = find_floor(nextPos, &floor, floorHeight, floorsG, total_floorsG);
-    int slopeAngle = atan2sG(floor->normal[2], floor->normal[0]);
-    slopeAngle = fix(slopeAngle);
-    float steepness = sqrtf(floor->normal[0] * floor->normal[0] + floor->normal[2] * floor->normal[2]);
-    velX += 7.0f * steepness * gSineTableG[slopeAngle >> 4];
-    velZ += 7.0f * steepness * gCosineTableG[slopeAngle >> 4];
-    velX *= lossFactor;
-    velZ *= lossFactor;
-    nextPos[0] = nextPos[0] + floor->normal[1] * (velX / 4.0f);
-    nextPos[2] = nextPos[2] + floor->normal[1] * (velZ / 4.0f);
-
-    // and update the sliding yaw
-    slidingYaw = atan2sG(velZ, velX);
-    int newFacingDYaw = (short)(facingAngle - slidingYaw);
-    if (newFacingDYaw > 0 && newFacingDYaw <= 0x4000) {
-        if ((newFacingDYaw -= 0x200) < 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > -0x4000 && newFacingDYaw < 0) {
-        if ((newFacingDYaw += 0x200) > 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > 0x4000 && newFacingDYaw < 0x8000) {
-        if ((newFacingDYaw += 0x200) > 0x8000) {
-            newFacingDYaw = 0x8000;
-        }
-    }
-    else if (newFacingDYaw > -0x8000 && newFacingDYaw < -0x4000) {
-        if ((newFacingDYaw -= 0x200) < -0x8000) {
-            newFacingDYaw = -0x8000;
-        }
-    }
-
-    // adjust your outgoing speed, now that the X and Z velocities are pinned down
-    float speed = -sqrtf(velX * velX + velZ * velZ);
-
-    // and your new angle
-    facingAngle = slidingYaw + newFacingDYaw;
-    facingAngle = fix(facingAngle);
-    slidingYaw = fix(slidingYaw);
-
-    // and return the result
-    struct FancySlideInfo solution;
-    solution.endFacingAngle = facingAngle;
-    solution.endSlidingAngle = slidingYaw;
-    solution.endSpeed = speed;
     solution.endPos[0] = nextPos[0];
     solution.endPos[1] = nextPos[1];
     solution.endPos[2] = nextPos[2];
@@ -245,10 +154,10 @@ __device__ DonutData donut_compute(float* marioPos, float sRadInner, float sRadO
     float displacementAngleUpper = acos(lowerCosine);
     float displacementAngleLower = acos(upperCosine);
     // this is converting the displacement angles to AU's
-    int displacementAUAngleUpper = atan2sG(cos(displacementAngleUpper), sin(displacementAngleUpper));
-    int displacementAUAngleLower = atan2sG(cos(displacementAngleLower), sin(displacementAngleLower));
+    int displacementAUAngleUpper = atan2s(cos(displacementAngleUpper), sin(displacementAngleUpper));
+    int displacementAUAngleLower = atan2s(cos(displacementAngleLower), sin(displacementAngleLower));
     // this is finding the line from the target donut center to the source donut center, as that's the general way Mario will be facing.
-    int centerLine = atan2sG(marioPos[2] - targetPos[2], marioPos[0] - targetPos[0]);
+    int centerLine = atan2s(marioPos[2] - targetPos[2], marioPos[0] - targetPos[0]);
     // now we take the center line, and add or subtract the upper and lower displacement angles. 32 HAU's are added on as wiggle room
     // and then the result in AU's is converted to HAU's.
     int hauAngleUpperHi = (centerLine + displacementAUAngleUpper + 32 * 16) / 16;
@@ -270,7 +179,7 @@ __device__ DonutData donut_compute(float* marioPos, float sRadInner, float sRadO
 // initializes a table with a bunch of 0's and 1's, and returns the number of 1's.
 __global__ void table_builder(int index2, TargetLog target) {
     lookupSize = 0;
-    int camYaw = fix(crude_camera_yawG(secondSlides[index2].nextPos, target.posCam));
+    int camYaw = fix(crude_camera_yaw(secondSlides[index2].nextPos, target.posCam));
 
     // now, there's a bit of black magic here. We have two intervals of HAU's. So we convert them to AU's.
     // the way of testing whether or not a point is "between them" is that we define the distance between two angles
@@ -318,7 +227,7 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
         pushAngle = fix(facingAngle);
     }
     else {
-        pushAngle = fix(atan2sG(offsetZ, offsetX));
+        pushAngle = fix(atan2s(offsetZ, offsetX));
     }
 
     float newMarioX = bullyPos[0] + 115.0f * gSineTableG[pushAngle >> 4];
@@ -338,7 +247,7 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
     float velX = (53.0f / 73.0f) * projectedV1 * rx;
     float velZ = (53.0f / 73.0f) * projectedV1 * rz;
 
-    int bullyYaw = fix(atan2sG(velZ, velX));
+    int bullyYaw = fix(atan2s(velZ, velX));
     float bullyVel = sqrtf(velX * velX + velZ * velZ);
 
     struct BullyData solution;
@@ -416,7 +325,7 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
 
         StickTableData sticksol = infer_stick(thirdData->nextPos, target.posBully, thirdData->nextVel, fourthData->facingAngle, fourthData->camAngle);
 
-        FancySlideInfo lastslide = sim_slide(sticksol, thirdData->nextPos, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle);
+        FancySlideInfo lastslide = sim_slide(sticksol, thirdData->nextPos, thirdData->nextVel, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle);
 
         // then, with this info, we simulate the bully impact.
 
@@ -448,8 +357,8 @@ __global__ void fourth_move(TargetLog target) {
     MotionData13* data = &(thirdSlides[index]);
 
     // which lets us compute the camera yaw, and the direction from the bully to us, which approximates our facing angle.
-    int camYaw = fix(crude_camera_yawG(data->nextPos, target.posCam));
-    int direction = atan2sG(data->nextPos[2] - target.posBully[2], data->nextPos[0] - target.posBully[0]);
+    int camYaw = fix(crude_camera_yaw(data->nextPos, target.posCam));
+    int direction = atan2s(data->nextPos[2] - target.posBully[2], data->nextPos[0] - target.posBully[0]);
     direction = fix(direction);
 
     // and to get our facing angle, we take the direction and add a displacement depending on our "delta" number
@@ -475,7 +384,7 @@ __global__ void fourth_move(TargetLog target) {
 
     // simulate the slide.
 
-    FancySlideInfo fourthslide = sim_slide(sticksol, data->nextPos, (data->nextVel) * gSineTableG[fangle >> 4], (data->nextVel) * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo fourthslide = sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * gSineTableG[fangle >> 4], (data->nextVel) * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
 
     // see how much you miss the bully by. If it's below 63, it's a hit!
 
@@ -509,7 +418,7 @@ __global__ void third_move(int index, TargetLog target) {
     float lb = 0.9f;
     float ub = 0.94f;
 
-    int camYaw = fix(crude_camera_yawG(pos, target.posCam));
+    int camYaw = fix(crude_camera_yaw(pos, target.posCam));
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     
@@ -525,7 +434,7 @@ __global__ void third_move(int index, TargetLog target) {
         return;
     }
 
-    FancySlideInfo thirdslide = sim_slide(stickTab[i], pos, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo thirdslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
 
     // in the air?
 
@@ -593,7 +502,7 @@ __global__ void second_move(int index, TargetLog target) {
     pos[2] = firstdata->nextPos[2];
     float vel = firstdata->nextVel;
 
-    int camYaw = fix(crude_camera_yawG(pos, target.posCam));
+    int camYaw = fix(crude_camera_yaw(pos, target.posCam));
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= 20129 * 8192) {
@@ -608,7 +517,7 @@ __global__ void second_move(int index, TargetLog target) {
         return;
     }
 
-    FancySlideInfo secondslide = sim_slide(stickTab[i], pos, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo secondslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
 
     // in the air?
 
@@ -674,7 +583,7 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
     float lb = 0.9f * 0.9f * 0.9f * 0.98f * 0.98f * 0.98f * 0.98f * 0.98f * 0.98f;
     float ub = 0.94f * 0.94f * 0.94f;
 
-    int camYaw = fix(crude_camera_yawG(pos, target.posCam));
+    int camYaw = fix(crude_camera_yaw(pos, target.posCam));
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= 20129 * 8192) {
@@ -689,7 +598,21 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         return;
     }
 
-    FancySlideInfo firstslide = sim_slide(stickTab[i], pos, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    if (idx == 24)
+    {
+        printf("FAngle: %i\n", fangle);
+        printf("Cam Yaw: %i\n", camYaw);
+    }
+
+    FancySlideInfo firstslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+
+    if (idx == 24)
+    {
+        printf("End Face Angle: %i\n", firstslide.endFacingAngle);
+        printf("End Pos: %f, %f, %f\n", firstslide.endPos[0], firstslide.endPos[1], firstslide.endPos[2]);
+        printf("End Slide Angle: %i\n", firstslide.endSlidingAngle);
+        printf("End Slide Vel: %f\n", firstslide.endSpeed);
+    }
 
     // in the air?
 
@@ -851,7 +774,7 @@ int main(int argc, char* argv[]) {
 
     printf("Initializing Floors/Stick Tables...\n\n");
 
-    initialise_floors << <1, 1 >> > ();
+    initialise_floorsG << <1, 1 >> > ();
     init_stick_tables << <1, 1 >> > ();
 
 
@@ -878,6 +801,13 @@ int main(int argc, char* argv[]) {
     struct MotionData13* firstSlidesCPU = (struct MotionData13*)std::malloc(nFirstSlidesCPU * sizeof(struct MotionData13));
     cudaMemcpy(firstSlidesCPU, firstSlidesGPU, nFirstSlidesCPU * sizeof(struct MotionData13), cudaMemcpyDeviceToHost);
 
+   /* std::cout << "Motion Data for the first id: \n";
+    std::cout << "\tCam Angle: " << firstSlidesCPU[0].camAngle << "\n";
+    std::cout << "\tFacing Angle: " << firstSlidesCPU[0].facingAngle << "\n";
+    std::cout << "\tNext Pos: " << firstSlidesCPU[0].nextPos << "\n";
+    std::cout << "\tNext Vel: " << firstSlidesCPU[0].nextVel << "\n";
+    std::cout << "\tStick X, Y: " << firstSlidesCPU[0].stickX << ", " << firstSlidesCPU[0].stickY << "\n";
+    std::cout << "\tWaiting Frames: " << firstSlidesCPU[0].waitingFrames << std::endl;*/
 
     for (int i = 0; i < 100/* nFirstSlidesCPU */; i++) {
         int hitCounter = 0;

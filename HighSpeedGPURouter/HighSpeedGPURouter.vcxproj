@@ -13,6 +13,7 @@
   <ItemGroup>
     <CudaCompile Include="..\Common\Camera.cu" />
     <CudaCompile Include="..\Common\Floor.cu" />
+    <CudaCompile Include="..\Common\Movement.cu" />
     <CudaCompile Include="..\Common\Stick.cu" />
     <CudaCompile Include="..\Common\Surface.cu" />
     <CudaCompile Include="..\Common\Trig.cu" />
@@ -25,6 +26,7 @@
     <ClInclude Include="..\Common\BruteforcerStructs.hpp" />
     <ClInclude Include="..\Common\Camera.cuh" />
     <ClInclude Include="..\Common\Floor.cuh" />
+    <ClInclude Include="..\Common\Movement.cuh" />
     <ClInclude Include="..\Common\Stick.cuh" />
     <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />

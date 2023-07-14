@@ -30,7 +30,7 @@ namespace BITFS {
                     yS *= (64.0f / mag);
                     mag = 64.0f;
                 }
-                int an = atan2sG(-yS, xS);
+                int an = atan2s(-yS, xS);
                 bool duplicate = false;
                 for (int i = 0; i < counter; i++) {
                     if (mag == stickTab[i].magnitude && an == stickTab[i].angle) {
@@ -72,7 +72,7 @@ namespace BITFS {
 
         Surface* floor;
         float floorHeight;
-        int floorIdx = find_floor(startPos, &floor, floorHeight, floorsG, total_floorsG);
+        int floorIdx = find_floor(startPos, &floor, floorHeight, floorsG, total_floors);
 
         int travelAngle = fix(angle);
         float lPrime;
@@ -99,7 +99,7 @@ namespace BITFS {
 
         int cameraYaw = (65536 + startCameraYaw) % 65536;
         float intendedMag = sqrtf(lPrime * lPrime + mPrime * mPrime);
-        int intendedDYaw = atan2sG(mPrime, lPrime);
+        int intendedDYaw = atan2s(mPrime, lPrime);
         intendedDYaw = (intendedDYaw + 65536) % 65536;
 
         int stickAngle = intendedDYaw + travelAngle - cameraYaw;
@@ -115,7 +115,7 @@ namespace BITFS {
         solution.stickX = x;
         solution.stickY = y;
         solution.magnitude = sqrtf(x * x + y * y);
-        solution.angle = atan2sG(-y, x);
+        solution.angle = atan2s(-y, x);
         return solution;
     }
 

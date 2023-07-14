@@ -10,6 +10,7 @@
 
 #include "../Common/BruteforcerStructs.hpp"
 #include "../Common/Floor.cuh"
+#include "../Common/Movement.cuh"
 #include "../Common/Stick.cuh"
 #include "../Common/Surface.cuh"
 #include "../Common/Trig.cuh"   
@@ -25,7 +26,7 @@ void init_camera_angles() {
         validCameraAngles[i] = false;
     }
     for (int hau = 0; hau < 4096; hau++) {
-        validCameraAngles[fix(atan2sG(-gCosineTableG[hau], -gSineTableG[hau]))] = true;
+        validCameraAngles[fix(atan2s(-gCosineTableG[hau], -gSineTableG[hau]))] = true;
     }
 }
 
@@ -106,8 +107,8 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     float dz = currentPosition[2] - cameraPos[2];
 
     float cameraDist = sqrtf(dx * dx + dy * dy + dz * dz);
-    float cameraPitch = atan2sG(sqrtf(dx * dx + dz * dz), dy);
-    float cameraYaw = atan2sG(dz, dx);
+    float cameraPitch = atan2s(sqrtf(dx * dx + dz * dz), dy);
+    float cameraYaw = atan2s(dz, dx);
 
     // The camera will pan ahead up to about 30% of the camera's distance to Mario.
     pan[2] = gSineTableG[0xC0] * cameraDist;
@@ -150,8 +151,8 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     dz = cameraFocus[2] - lakituPosition[2];
 
     cameraDist = sqrtf(dx * dx + dy * dy + dz * dz);
-    cameraPitch = atan2sG(sqrtf(dx * dx + dz * dz), dy);
-    cameraYaw = atan2sG(dz, dx);
+    cameraPitch = atan2s(sqrtf(dx * dx + dz * dz), dy);
+    cameraYaw = atan2s(dz, dx);
 
     if (cameraPitch > 15872) {
         cameraPitch = 15872;
@@ -164,7 +165,7 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     cameraFocus[1] = lakituPosition[1] + cameraDist * gSineTableG[fix((int)cameraPitch) >> 4];
     cameraFocus[2] = lakituPosition[2] + cameraDist * gCosineTableG[fix((int)cameraPitch) >> 4] * gCosineTableG[fix((int)cameraYaw) >> 4];
 
-    return atan2sG(lakituPosition[2] - cameraFocus[2], lakituPosition[0] - cameraFocus[0]);
+    return atan2s(lakituPosition[2] - cameraFocus[2], lakituPosition[0] - cameraFocus[0]);
 }
 
 // simple tester for being on the appropriate side of the one up platform.
@@ -172,7 +173,7 @@ bool onOneUp(float* position) {
     if (assess_floor(position) == 3) {
         Surface* floor;
         float floorheight;
-        int floorIdx = find_floor(position, &floor, floorheight, floorsG, total_floorsG);
+        int floorIdx = find_floor(position, &floor, floorheight, floorsG, total_floors);
         
         if(position[0] > 0.0f && (floorIdx == 2 || floorIdx == 3)) {
             return true;
@@ -189,105 +190,6 @@ bool onOneUp(float* position) {
     }
 }
 
-
-// computes 1QF of crouchslide, given stick position, starting position, starting speed, starting facing angle, camera angle.
-FancySlideInfo precise_sim_slide(StickTableData stick, float* startPos, float startSpeed, float vX, float vZ, int faceAngle, int slideYaw, int camera) {
-    
-    // initialize some variables we'll be reusing because they get updated
-    float nextPos[3];
-    nextPos[0] = startPos[0];
-    nextPos[1] = startPos[1];
-    nextPos[2] = startPos[2];
-    float speed = startSpeed;
-    int facingAngle = (faceAngle + 65536) % 65536;
-    int slidingYaw = (slideYaw + 65536) % 65536;
-    int cameraYaw = camera;
-    
-    float intendedMag = ((stick.magnitude / 64.0f) * (stick.magnitude / 64.0f)) * 32.0f;
-    
-    // and the angle stuff
-    int intendedDYaw = stick.angle + cameraYaw - slidingYaw;
-    intendedDYaw = (2 * 65536 + intendedDYaw) % 65536;
-    float forward = gCosineTableG[intendedDYaw >> 4];
-    float sideward = gSineTableG[intendedDYaw >> 4];
-    
-    // and the 10k loss factor stuff.
-    if (forward < 0.0f && speed >= 0.0f) {
-        forward *= 0.5f + 0.5f * speed / 100.0f;
-    }
-    float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
-    
-    // and the speed updating from sliding stuff
-    float velX = vX;
-    float velZ = vZ;
-    float oldSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX += velZ * (intendedMag / 32.0f) * sideward * 0.05f;
-    velZ -= velX * (intendedMag / 32.0f) * sideward * 0.05f;
-    float newSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX = velX * oldSpeed / newSpeed;
-    velZ = velZ * oldSpeed / newSpeed;
-
-    Surface* floor;
-    float floorHeight;
-    int floorIdx = find_floor(nextPos, &floor, floorHeight, floorsG, total_floorsG);
-    int slopeAngle = atan2sG(floor->normal[2], floor->normal[0]);
-    slopeAngle = (slopeAngle + 65536) % 65536;
-    float steepness = sqrtf(floor->normal[0] * floor->normal[0] + floor->normal[2] * floor->normal[2]);
-    velX += 7.0f * steepness * gSineTableG[slopeAngle >> 4];
-    velZ += 7.0f * steepness * gCosineTableG[slopeAngle >> 4];
-    velX *= lossFactor;
-    velZ *= lossFactor;
-    nextPos[0] = nextPos[0] + floor->normal[1] * (velX / 4.0f);
-    nextPos[2] = nextPos[2] + floor->normal[1] * (velZ / 4.0f);
-    
-    // and update the sliding yaw
-    slidingYaw = atan2sG(velZ, velX);
-    int newFacingDYaw = (short)(facingAngle - slidingYaw);
-    if (newFacingDYaw > 0 && newFacingDYaw <= 0x4000) {
-        if ((newFacingDYaw -= 0x200) < 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > -0x4000 && newFacingDYaw < 0) {
-        if ((newFacingDYaw += 0x200) > 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > 0x4000 && newFacingDYaw < 0x8000) {
-        if ((newFacingDYaw += 0x200) > 0x8000) {
-            newFacingDYaw = 0x8000;
-        }
-    }
-    else if (newFacingDYaw > -0x8000 && newFacingDYaw < -0x4000) {
-        if ((newFacingDYaw -= 0x200) < -0x8000) {
-            newFacingDYaw = -0x8000;
-        }
-    }
-    
-    // adjust your outgoing speed, now that the X and Z velocities are pinned down
-    if (newFacingDYaw > -0x4000 && newFacingDYaw < 0x4000) {
-        speed = sqrtf(velX * velX + velZ * velZ);
-    }
-    else {
-        speed = -sqrtf(velX * velX + velZ * velZ);
-    }
-    
-    // and your new angle
-    facingAngle = slidingYaw + newFacingDYaw;
-    facingAngle = (65536 + facingAngle) % 65536;
-    slidingYaw = (65536 + slidingYaw) % 65536;
-    
-    // and return the result
-    struct FancySlideInfo solution;
-    solution.endFacingAngle = facingAngle;
-    solution.endSlidingAngle = slidingYaw;
-    solution.endSpeed = speed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-
-    return solution;
-}
 
 //simulates 1QF of HAU-aligned travel in the air, including floor snap up for recalculating things and being precise about it.
 AirInfo sim_airstep(float* initialPos, float initialSpeed, int initialAngle, bool first) {
@@ -314,7 +216,7 @@ AirInfo sim_airstep(float* initialPos, float initialSpeed, int initialAngle, boo
     
     Surface* floor;
     float floorheight;
-    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floorsG);
+    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floors);
     nextPos[1] = fmaxf(floorheight, nextPos[1]);
     
     struct AirInfo solution;
@@ -390,7 +292,7 @@ int main(int argc, char* argv[]) {
             for (int j = 0; j < 6236; j++) {
                 
                 // for going in the -X direction, the angles should both be 16384 + 32768, and the speeds should be vel -vel.
-                FancySlideInfo tenkslide = precise_sim_slide(stickTab[j], tenKPosition, vel, vel, 0.0f, 16384, 16384, c);
+                FancySlideInfo tenkslide = sim_slide(stickTab[j], tenKPosition, vel, vel, 0.0f, 16384, 16384, c);
                 
                 // must be going backwards.
                 if(tenkslide.endSpeed > 0.0f) {
