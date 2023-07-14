@@ -11,20 +11,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="First10k.cpp" />
+    <CudaCompile Include="..\Common\Trig.cu" />
+    <CudaCompile Include="First10k.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\BruteforcerStructs.hpp" />
-    <ClInclude Include="..\Common\Floor.cuh" />
-    <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="..\Common\Floor.cu" />
-    <CudaCompile Include="..\Common\Surface.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Trig.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{56620771-B74B-4EC7-A555-3038D1985E27}</ProjectGuid>

@@ -1,118 +1,122 @@
 #pragma once
 
-struct FancySlideInfo {
-    int endFacingAngle;
-    int endSlidingAngle;
-    float endSpeed;
-    float endPos[3];
-};
+namespace BITFS {
 
-struct AirInfo {
-    float endSpeed;
-    float endPos[3];
-};
+    struct FancySlideInfo {
+        int endFacingAngle;
+        int endSlidingAngle;
+        float endSpeed;
+        float endPos[3];
+    };
 
-struct StickTableData {
-    int stickX;
-    int stickY;
-    float magnitude;
-    int angle;
-};
+    struct AirInfo {
+        float endSpeed;
+        float endPos[3];
+    };
 
-struct DonutData {
-    float overlapArea;
-    int hauBand[2][2];
-};
+    struct StickTableData {
+        int stickX;
+        int stickY;
+        float magnitude;
+        int angle;
+    };
 
-struct MotionData13 {
-    float nextPos[3];
-    float nextVel;
-    int camAngle;
-    int facingAngle;
-    int stickX;
-    int stickY;
-    int waitingFrames;
-};
+    struct DonutData {
+        float overlapArea;
+        int hauBand[2][2];
+    };
 
-struct MotionData2 {
-    float nextPos[3];
-    float nextVel;
-    int camAngle;
-    int facingAngle;
-    int stickX;
-    int stickY;
-    int waitingFrames;
-    DonutData donut;
-};
+    struct MotionData13 {
+        float nextPos[3];
+        float nextVel;
+        int camAngle;
+        int facingAngle;
+        int stickX;
+        int stickY;
+        int waitingFrames;
+    };
 
-struct MotionData4 {
-    int identifier;
-    int camAngle;
-    int facingAngle;
-    int stickX;
-    int stickY;
-};
+    struct MotionData2 {
+        float nextPos[3];
+        float nextVel;
+        int camAngle;
+        int facingAngle;
+        int stickX;
+        int stickY;
+        int waitingFrames;
+        DonutData donut;
+    };
 
-struct PositionLog {
-    float posCam[3];
-    float pos21[3];
-    float pos22[3];
-    float pos23[3];
-    float pos24[3];
-};
+    struct MotionData4 {
+        int identifier;
+        int camAngle;
+        int facingAngle;
+        int stickX;
+        int stickY;
+    };
 
-struct VelocityLog {
-    float vel21;
-    float vel22;
-    float vel23;
-    float vel24;
-};
+    struct PositionLog {
+        float posCam[3];
+        float pos21[3];
+        float pos22[3];
+        float pos23[3];
+        float pos24[3];
+    };
 
-struct StickLog {
-    int stick21X;
-    int stick21Y;
-    int stick22X;
-    int stick22Y;
-    int stick23X;
-    int stick23Y;
-    int stick24X;
-    int stick24Y;
-};
+    struct VelocityLog {
+        float vel21;
+        float vel22;
+        float vel23;
+        float vel24;
+    };
 
-struct AngleLog {
-    int cam21;
-    int facing21;
-    int cam22;
-    int facing22;
-    int cam23;
-    int facing23;
-    int cam24;
-    int facing24;
-};
+    struct StickLog {
+        int stick21X;
+        int stick21Y;
+        int stick22X;
+        int stick22Y;
+        int stick23X;
+        int stick23Y;
+        int stick24X;
+        int stick24Y;
+    };
 
-struct WaitingLog {
-    int waiting21;
-    int waiting22;
-    int waiting23;
-};
+    struct AngleLog {
+        int cam21;
+        int facing21;
+        int cam22;
+        int facing22;
+        int cam23;
+        int facing23;
+        int cam24;
+        int facing24;
+    };
 
-struct TargetLog {
-    float minSpeed;
-    float posBully[3];
-    float posCam[3];
-};
+    struct WaitingLog {
+        int waiting21;
+        int waiting22;
+        int waiting23;
+    };
 
-struct BullyData {
-    float posBully[3];
-    int angle;
-    float velBully;
-};
+    struct TargetLog {
+        float minSpeed;
+        float posBully[3];
+        float posCam[3];
+    };
 
-struct AllData {
-    PositionLog positions;
-    VelocityLog velocities;
-    StickLog sticks;
-    AngleLog angles;
-    WaitingLog waits;
-    BullyData bully;
-};
+    struct BullyData {
+        float posBully[3];
+        int angle;
+        float velBully;
+    };
+
+    struct AllData {
+        PositionLog positions;
+        VelocityLog velocities;
+        StickLog sticks;
+        AngleLog angles;
+        WaitingLog waits;
+        BullyData bully;
+    };
+
+}

@@ -11,13 +11,27 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\Common\Camera.cu" />
-    <CudaCompile Include="..\Common\Floor.cu" />
-    <CudaCompile Include="..\Common\Movement.cu" />
-    <CudaCompile Include="..\Common\Stick.cu" />
-    <CudaCompile Include="..\Common\Surface.cu" />
-    <CudaCompile Include="..\Common\Trig.cu" />
-    <CudaCompile Include="..\Common\VMath.cu" />
+    <CudaCompile Include="..\Common\Camera.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Floor.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Movement.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Stick.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Surface.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Trig.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\VMath.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
     <CudaCompile Include="HiSpeedRouterGPUV2.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>

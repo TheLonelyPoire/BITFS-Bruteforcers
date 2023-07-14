@@ -259,7 +259,7 @@ int main(int argc, char* argv[]) {
     printf("floats(%f,%f)\n", lowerSpeed, upperSpeed);
     
     initialise_floors();
-    init_stick_tables();
+    init_stick_tables <<<1,1>>> ();
     init_camera_angles();
     
     // this for loop checks once every 100 X coordinates, from -2000X to +2000X. Feel free to tamper to scan other cam coords.
