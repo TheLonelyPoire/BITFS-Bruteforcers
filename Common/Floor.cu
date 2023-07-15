@@ -166,9 +166,16 @@ namespace BITFS {
 
 
     __host__ __device__ int assess_floor(float* position) {
+        Surface* floorSet;
+        #if !defined(__CUDA_ARCH__)
+            floorSet = floors;
+        #else
+            floorSet = floorsG;
+        #endif
+        
         Surface* floor;
         float floorheight;
-        int floorIdx = find_floor(position, &floor, floorheight, floorsG, total_floors);
+        int floorIdx = find_floor(position, &floor, floorheight, floorSet, total_floors);
         if (floorIdx == -1) {
             return 0;
         }
@@ -189,14 +196,17 @@ namespace BITFS {
 
     __host__ __device__ bool stability_check(float* position, float speed, int angle) {
 
-        // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
+        // Choose the appropriate trig tables/floor set depending on whether the function is called from the host or from the device
         float* cosineTable, * sineTable;
+        Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
             cosineTable = gCosineTable;
             sineTable = gSineTable;
+            floorSet = floors;
         #else
             cosineTable = gCosineTableG;
             sineTable = gSineTableG;
+            floorSet = floorsG;
         #endif
 
         float nextPos[3];
@@ -209,7 +219,7 @@ namespace BITFS {
 
         Surface* floor;
         float floorheight;
-        int floorIdx = find_floor(position, &floor, floorheight, floorsG, total_floors);
+        int floorIdx = find_floor(position, &floor, floorheight, floorSet, total_floors);
         nextPos[0] += floor->normal[1] * (velX / 4.0f);
         nextPos[2] += floor->normal[1] * (velZ / 4.0f);
 

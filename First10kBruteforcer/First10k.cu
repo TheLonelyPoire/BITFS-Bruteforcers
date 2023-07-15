@@ -92,9 +92,9 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
 
     baseCameraPitch = baseCameraPitch + 2304;
 
-    float cameraPos[3] = { currentPosition[0] + baseCameraDist * gCosineTableG[fix((int)baseCameraPitch) >> 4] * gSineTableG[fix((int)baseCameraYaw) >> 4],
-                       currentPosition[1] + 125.0f - 10.0f + baseCameraDist * gSineTableG[fix((int)baseCameraPitch) >> 4],
-                       currentPosition[2] + baseCameraDist * gCosineTableG[fix((int)baseCameraPitch) >> 4] * gCosineTableG[fix((int)baseCameraYaw) >> 4]
+    float cameraPos[3] = { currentPosition[0] + baseCameraDist * gCosineTable[fix((int)baseCameraPitch) >> 4] * gSineTable[fix((int)baseCameraYaw) >> 4],
+                       currentPosition[1] + 125.0f - 10.0f + baseCameraDist * gSineTable[fix((int)baseCameraPitch) >> 4],
+                       currentPosition[2] + baseCameraDist * gCosineTable[fix((int)baseCameraPitch) >> 4] * gCosineTable[fix((int)baseCameraYaw) >> 4]
     };
     // posY was removed from the camera position height because it's close to 0.
 
@@ -111,14 +111,14 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     float cameraYaw = atan2s(dz, dx);
 
     // The camera will pan ahead up to about 30% of the camera's distance to Mario.
-    pan[2] = gSineTableG[0xC0] * cameraDist;
+    pan[2] = gSineTable[0xC0] * cameraDist;
 
     temp[0] = pan[0];
     temp[1] = pan[1];
     temp[2] = pan[2];
 
-    pan[0] = temp[2] * gSineTableG[fix((int)faceAngle) >> 4] + temp[0] * gCosineTableG[fix((int)faceAngle) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)faceAngle) >> 4] - temp[0] * gSineTableG[fix((int)faceAngle) >> 4];
+    pan[0] = temp[2] * gSineTable[fix((int)faceAngle) >> 4] + temp[0] * gCosineTable[fix((int)faceAngle) >> 4];
+    pan[2] = temp[2] * gCosineTable[fix((int)faceAngle) >> 4] - temp[0] * gSineTable[fix((int)faceAngle) >> 4];
 
     // rotate in the opposite direction
     cameraYaw = -cameraYaw;
@@ -127,8 +127,8 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     temp[1] = pan[1];
     temp[2] = pan[2];
 
-    pan[0] = temp[2] * gSineTableG[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTableG[fix((int)cameraYaw) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)cameraYaw) >> 4] - temp[0] * gSineTableG[fix((int)cameraYaw) >> 4];
+    pan[0] = temp[2] * gSineTable[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTable[fix((int)cameraYaw) >> 4];
+    pan[2] = temp[2] * gCosineTable[fix((int)cameraYaw) >> 4] - temp[0] * gSineTable[fix((int)cameraYaw) >> 4];
 
     // Only pan left or right
     pan[2] = 0.f;
@@ -139,8 +139,8 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
     temp[1] = pan[1];
     temp[2] = pan[2];
 
-    pan[0] = temp[2] * gSineTableG[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTableG[fix((int)cameraYaw) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)cameraYaw) >> 4] - temp[0] * gSineTableG[fix((int)cameraYaw) >> 4];
+    pan[0] = temp[2] * gSineTable[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTable[fix((int)cameraYaw) >> 4];
+    pan[2] = temp[2] * gCosineTable[fix((int)cameraYaw) >> 4] - temp[0] * gSineTable[fix((int)cameraYaw) >> 4];
 
     float cameraFocus[3] = { currentPosition[0] + pan[0], currentPosition[1] + 125.0f + pan[1] - 90.0f, currentPosition[2] + pan[2] };
     // focusY removed because it's probably 0-ish.
@@ -161,9 +161,9 @@ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAng
         cameraPitch = -15872;
     }
 
-    cameraFocus[0] = lakituPosition[0] + cameraDist * gCosineTableG[fix((int)cameraPitch) >> 4] * gSineTableG[fix((int)cameraYaw) >> 4];
-    cameraFocus[1] = lakituPosition[1] + cameraDist * gSineTableG[fix((int)cameraPitch) >> 4];
-    cameraFocus[2] = lakituPosition[2] + cameraDist * gCosineTableG[fix((int)cameraPitch) >> 4] * gCosineTableG[fix((int)cameraYaw) >> 4];
+    cameraFocus[0] = lakituPosition[0] + cameraDist * gCosineTable[fix((int)cameraPitch) >> 4] * gSineTable[fix((int)cameraYaw) >> 4];
+    cameraFocus[1] = lakituPosition[1] + cameraDist * gSineTable[fix((int)cameraPitch) >> 4];
+    cameraFocus[2] = lakituPosition[2] + cameraDist * gCosineTable[fix((int)cameraPitch) >> 4] * gCosineTable[fix((int)cameraYaw) >> 4];
 
     return atan2s(lakituPosition[2] - cameraFocus[2], lakituPosition[0] - cameraFocus[0]);
 }
@@ -190,43 +190,6 @@ bool onOneUp(float* position) {
     }
 }
 
-
-//simulates 1QF of HAU-aligned travel in the air, including floor snap up for recalculating things and being precise about it.
-AirInfo sim_airstep(float* initialPos, float initialSpeed, int initialAngle, bool first) {
-    float nextPos[3];
-    nextPos[0] = initialPos[0];
-    nextPos[1] = initialPos[1];
-    nextPos[2] = initialPos[2];
-    int angle = (65536 + initialAngle) % 65536;
-    float speed;
-    // simulate the speed loss from going forward or backwards.
-    if (first) {
-        speed = initialSpeed > 0.0f ? initialSpeed - 0.35f : initialSpeed + 0.35f;
-        speed = speed > 0.0f ? speed - 1.0f : speed + 2.0f;
-    }
-    else {
-        speed = initialSpeed;
-    }
-
-    float velX = speed * gSineTableG[angle >> 4];
-    float velZ = speed * gCosineTableG[angle >> 4];
-        
-    nextPos[0] += velX / 4.0f;
-    nextPos[2] += velZ / 4.0f;
-    
-    Surface* floor;
-    float floorheight;
-    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floors);
-    nextPos[1] = fmaxf(floorheight, nextPos[1]);
-    
-    struct AirInfo solution;
-    solution.endSpeed = speed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-    
-    return solution;
-}
 
 int main(int argc, char* argv[]) {
     
@@ -259,7 +222,7 @@ int main(int argc, char* argv[]) {
     printf("floats(%f,%f)\n", lowerSpeed, upperSpeed);
     
     initialise_floors();
-    init_stick_tables <<<1,1>>> ();
+    init_stick_tables();
     init_camera_angles();
     
     // this for loop checks once every 100 X coordinates, from -2000X to +2000X. Feel free to tamper to scan other cam coords.
@@ -271,7 +234,7 @@ int main(int argc, char* argv[]) {
         for (int s = (int)(lowerSpeed / 10.0f); s <= (int)(upperSpeed / 10.0f); s++) {
             
             float vel = (float)(s * 10);
-            
+
             // infer back to what the platform slope must be to hit the 10k with the indicated speed.
             // if tampering with the PU you're going to, be very careful with all the stuff to avoid sign errors in the speed.
             // assumes 1QF of travel.
@@ -287,13 +250,18 @@ int main(int argc, char* argv[]) {
             
             // this is the camera yaw at time of 10k.
             int c = fine_camera_yaw(frame1Focus, cameraPosition, 16384);
-            
+
             // we're iterating over fewer stick positions, only the ones that pull back.
             for (int j = 0; j < 6236; j++) {
                 
                 // for going in the -X direction, the angles should both be 16384 + 32768, and the speeds should be vel -vel.
-                FancySlideInfo tenkslide = sim_slide(stickTab[j], tenKPosition, vel, vel, 0.0f, 16384, 16384, c);
-                
+                FancySlideInfo tenkslide;
+
+                //must get non-Null result
+                if (!sim_slide(stickTab[j], tenKPosition, vel, vel, 0.0f, 16384, 16384, c, false, tenkslide)) {
+                    continue;
+                }
+
                 // must be going backwards.
                 if(tenkslide.endSpeed > 0.0f) {
                     continue;
@@ -305,8 +273,8 @@ int main(int argc, char* argv[]) {
                 }
                 
                 // simulate air movement. Must land on ground.
-                AirInfo tenkair = sim_airstep(tenkslide.endPos, tenkslide.endSpeed, tenkslide.endFacingAngle, true);
-                if (assess_floor(tenkair.endPos) != 2) {
+                AirInfo tenkair;
+                if(!sim_airstep(tenkslide.endPos, tenkslide.endSpeed, tenkslide.endFacingAngle, true, tenkair) || assess_floor(tenkair.endPos) != 2) {
                     continue;
                 }
                 

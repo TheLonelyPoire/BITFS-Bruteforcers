@@ -4,6 +4,8 @@
 #include "cuda_runtime.h"
 #include <stdint.h>
 
+# define M_PI            3.14159265358979323846  /* pi */
+
 namespace BITFS {
 
 	extern __device__ float gSineTableG[4096];

@@ -7,12 +7,13 @@
 
 namespace BITFS {
 
-    __device__ StickTableData stickTab[20129];
+    __device__ StickTableData stickTabG[20129];
+    StickTableData stickTab[20129];
 
     // novel function here. Basically, some stick positions are redundant, so what this does is iterates through the stick positions,
     //computes their magnitudes and angles, iterates through stick positions again to look for any exact copies, and if there's no exact
     //copy, adds its data to the table of unique stick positions. This cuts down on the number of stick positions to test.
-    __global__ void init_stick_tables() {
+    __global__ void init_stick_tablesG() {
         int counter = 0;
         for (int x = -122; x < 122; x++) {
             if (abs(x) < 2 && !(x == 0)) {
@@ -33,7 +34,53 @@ namespace BITFS {
                 int an = atan2s(-yS, xS);
                 bool duplicate = false;
                 for (int i = 0; i < counter; i++) {
+                    if (mag == stickTabG[i].magnitude && an == stickTabG[i].angle) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (duplicate) {
+                    continue;
+                }
+                stickTabG[counter].stickX = x;
+                stickTabG[counter].stickY = y;
+                stickTabG[counter].magnitude = mag;
+                stickTabG[counter].angle = an;
+                counter++;
+            }
+        }
+    }
+
+
+    // novel function here. Basically, some stick positions are redundant, so what this does is iterates through the stick positions,
+    //computes their magnitudes and angles, iterates through stick positions again to look for any exact copies, and if there's no exact
+    //copy, adds its data to the table of unique stick positions. This cuts down on the number of stick positions to test.
+    void init_stick_tables() {
+        int counter = 0;
+        for (int x = -122; x < 122; x++) {
+            if (abs(x) < 2 && !(x == 0)) {
+                continue;
+            }
+            for (int y = -121; y <= 0; y++) {
+                if (abs(y) < 2 && !(y == 0)) {
+                    continue;
+                }
+                float mag = sqrtf(x * x + y * y);
+                float xS = x;
+                float yS = y;
+                if (mag > 64.0f) {
+                    xS *= (64.0f / mag);
+                    yS *= (64.0f / mag);
+                    mag = 64.0f;
+                }
+                int an = atan2s(-yS, xS);
+                bool duplicate = false;
+                for (int i = 0; i < counter; i++) {
                     if (mag == stickTab[i].magnitude && an == stickTab[i].angle) {
+                        duplicate = true;
+                        break;
+                    }
+                    if (mag == 64.0f) {
                         duplicate = true;
                         break;
                     }

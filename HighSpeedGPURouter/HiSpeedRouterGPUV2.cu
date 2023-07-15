@@ -19,7 +19,6 @@
 #include "../Common/VMath.cuh"
 
 
-# define M_PI            3.14159265358979323846  /* pi */
 # define MAX_FIRST_SLIDES 10000
 # define MAX_SECOND_SLIDES 10000
 # define MAX_THIRD_SLIDES 10000
@@ -51,36 +50,6 @@ __global__ void copy_pointers_to_gpu(MotionData13* p1, MotionData2* p2, MotionDa
     thirdSlides = p3;
     fourthSlides = p4;
     finalSolutionsLog = p5;
-}
-
-
-//simulates 1QF of HAU-aligned travel in the air, including floor snap up for recalculating things and being precise about it.
-__device__ AirInfo sim_airstep(float* initialPos, float initialSpeed, int initialAngle) {
-    float nextPos[3];
-    nextPos[0] = initialPos[0];
-    nextPos[1] = initialPos[1];
-    nextPos[2] = initialPos[2];
-    int angle = fix(initialAngle);
-
-    // no need to simulate speed loss due to how fast we be going.
-    float velX = initialSpeed * gSineTableG[angle >> 4];
-    float velZ = initialSpeed * gCosineTableG[angle >> 4];
-
-    nextPos[0] += velX / 4.0f;
-    nextPos[2] += velZ / 4.0f;
-
-    Surface* floor;
-    float floorheight;
-    int floorIdx = find_floor(nextPos, &floor, floorheight, floorsG, total_floors);
-    nextPos[1] = fmaxf(floorheight, nextPos[1]);
-
-    struct AirInfo solution;
-    solution.endSpeed = initialSpeed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-
-    return solution;
 }
 
 
@@ -325,7 +294,13 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
 
         StickTableData sticksol = infer_stick(thirdData->nextPos, target.posBully, thirdData->nextVel, fourthData->facingAngle, fourthData->camAngle);
 
-        FancySlideInfo lastslide = sim_slide(sticksol, thirdData->nextPos, thirdData->nextVel, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle);
+        FancySlideInfo lastslide;
+        bool successfulSlide = sim_slide(sticksol, thirdData->nextPos, thirdData->nextVel, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle, false, lastslide);
+
+        if (!successfulSlide){
+            printf("FAILED SLIDE IN REWRITE STRUCTS! THIS SHOULD NOT HAPPEN!");
+            return;
+        }
 
         // then, with this info, we simulate the bully impact.
 
@@ -384,7 +359,10 @@ __global__ void fourth_move(TargetLog target) {
 
     // simulate the slide.
 
-    FancySlideInfo fourthslide = sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * gSineTableG[fangle >> 4], (data->nextVel) * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo fourthslide;
+    if (!sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * gSineTableG[fangle >> 4], (data->nextVel) * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, fourthslide)) {
+        return;
+    }
 
     // see how much you miss the bully by. If it's below 63, it's a hit!
 
@@ -434,7 +412,10 @@ __global__ void third_move(int index, TargetLog target) {
         return;
     }
 
-    FancySlideInfo thirdslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo thirdslide;
+    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, thirdslide)){
+        return;
+    }
 
     // in the air?
 
@@ -444,8 +425,8 @@ __global__ void third_move(int index, TargetLog target) {
 
     //simulate air step.
 
-    AirInfo thirdair = sim_airstep(thirdslide.endPos, thirdslide.endSpeed, thirdslide.endFacingAngle);
-    if (assess_floor(thirdair.endPos) != 2) {
+    AirInfo thirdair;
+    if(!sim_airstep(thirdslide.endPos, thirdslide.endSpeed, thirdslide.endFacingAngle, false, thirdair) || assess_floor(thirdair.endPos) != 2) {
         return;
     }
 
@@ -481,8 +462,8 @@ __global__ void third_move(int index, TargetLog target) {
         data->nextPos[1] = thirdair.endPos[1];
         data->nextPos[2] = thirdair.endPos[2];
         data->nextVel = nextspeed;
-        data->stickX = correct_stick(stickTab[i].stickX);
-        data->stickY = correct_stick(stickTab[i].stickY);
+        data->stickX = correct_stick(stickTabG[i].stickX);
+        data->stickY = correct_stick(stickTabG[i].stickY);
         data->camAngle = camYaw;
         data->facingAngle = fangle;
         data->waitingFrames = wf;
@@ -517,7 +498,10 @@ __global__ void second_move(int index, TargetLog target) {
         return;
     }
 
-    FancySlideInfo secondslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
+    FancySlideInfo secondslide;
+    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, secondslide)){
+        return;
+    }
 
     // in the air?
 
@@ -527,8 +511,8 @@ __global__ void second_move(int index, TargetLog target) {
 
     //simulate air step.
 
-    AirInfo secondair = sim_airstep(secondslide.endPos, secondslide.endSpeed, secondslide.endFacingAngle);
-    if (assess_floor(secondair.endPos) != 2) {
+    AirInfo secondair;
+    if(!sim_airstep(secondslide.endPos, secondslide.endSpeed, secondslide.endFacingAngle, false, secondair) || assess_floor(secondair.endPos) != 2) {
         return;
     }
 
@@ -562,8 +546,8 @@ __global__ void second_move(int index, TargetLog target) {
         data->nextPos[1] = secondair.endPos[1];
         data->nextPos[2] = secondair.endPos[2];
         data->nextVel = nextspeed;
-        data->stickX = correct_stick(stickTab[i].stickX);
-        data->stickY = correct_stick(stickTab[i].stickY);
+        data->stickX = correct_stick(stickTabG[i].stickX);
+        data->stickY = correct_stick(stickTabG[i].stickY);
         data->camAngle = camYaw;
         data->facingAngle = fangle;
         data->waitingFrames = wf;
@@ -597,21 +581,10 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
     if (!stability_check(pos, vel, fangle)) {
         return;
     }
-
-    if (idx == 24)
-    {
-        printf("FAngle: %i\n", fangle);
-        printf("Cam Yaw: %i\n", camYaw);
-    }
-
-    FancySlideInfo firstslide = sim_slide(stickTab[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw);
-
-    if (idx == 24)
-    {
-        printf("End Face Angle: %i\n", firstslide.endFacingAngle);
-        printf("End Pos: %f, %f, %f\n", firstslide.endPos[0], firstslide.endPos[1], firstslide.endPos[2]);
-        printf("End Slide Angle: %i\n", firstslide.endSlidingAngle);
-        printf("End Slide Vel: %f\n", firstslide.endSpeed);
+    
+    FancySlideInfo firstslide;
+    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, true, firstslide)) {
+        return;
     }
 
     // in the air?
@@ -622,8 +595,8 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
 
     //simulate air step.
 
-    AirInfo firstair = sim_airstep(firstslide.endPos, firstslide.endSpeed, firstslide.endFacingAngle);
-    if (assess_floor(firstair.endPos) != 2) {
+    AirInfo firstair;
+    if(!sim_airstep(firstslide.endPos, firstslide.endSpeed, firstslide.endFacingAngle, false, firstair) || assess_floor(firstair.endPos) != 2) {
         return;
     }
 
@@ -652,8 +625,8 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         data->nextPos[1] = firstair.endPos[1];
         data->nextPos[2] = firstair.endPos[2];
         data->nextVel = nextspeed;
-        data->stickX = correct_stick(stickTab[i].stickX);
-        data->stickY = correct_stick(stickTab[i].stickY);
+        data->stickX = correct_stick(stickTabG[i].stickX);
+        data->stickY = correct_stick(stickTabG[i].stickY);
         data->camAngle = camYaw;
         data->facingAngle = fangle;
         data->waitingFrames = wf;
@@ -775,7 +748,7 @@ int main(int argc, char* argv[]) {
     printf("Initializing Floors/Stick Tables...\n\n");
 
     initialise_floorsG << <1, 1 >> > ();
-    init_stick_tables << <1, 1 >> > ();
+    init_stick_tablesG << <1, 1 >> > ();
 
 
     int nFirstBlocks = (20129 * 8192 + nThreads - 1) / nThreads;
