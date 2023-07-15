@@ -20,4 +20,7 @@ namespace BITFS {
     __host__ __device__ int assess_floor(float* position);
 
     __host__ __device__ bool stability_check(float* position, float speed, int angle);
+
+    __host__ __device__ bool on_one_up(float* position);
+
 }

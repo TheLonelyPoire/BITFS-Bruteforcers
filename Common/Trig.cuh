@@ -11,12 +11,17 @@ namespace BITFS {
 	extern __device__ float gSineTableG[4096];
 	extern __device__ float gCosineTableG[4096];
 	extern __device__ int gArctanTableG[8192];
+	extern __device__ int gReverseArctanTableG[65537];
+
 
 	// yes we need separate trig tables for the CPU and GPU.
 
 	extern float gSineTable[4096];
 	extern float gCosineTable[4096];
 	extern int gArctanTable[8192];
+	extern int gReverseArctanTable[65537];
+
+	__host__ __device__ void init_reverse_atan();
 
 	__host__ __device__ int16_t atan2_lookup(float z, float x);
 

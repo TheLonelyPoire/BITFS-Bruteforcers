@@ -225,4 +225,35 @@ namespace BITFS {
 
         return assess_floor(nextPos) == 0;
     }
+
+
+    __host__ __device__ bool on_one_up(float* position) {
+
+        Surface* floorSet;
+        #if !defined(__CUDA_ARCH__)
+            floorSet = floors;
+        #else
+            floorSet = floorsG;
+        #endif
+
+        if (assess_floor(position) == 3) {
+            Surface* floor;
+            float floorheight;
+            int floorIdx = find_floor(position, &floor, floorheight, floorSet, total_floors);
+
+            if (position[0] > 0.0f && (floorIdx == 2 || floorIdx == 3)) {
+                return true;
+            }
+            else if (position[0] < 0.0f && (floorIdx == 33 || floorIdx == 34)) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+
 }

@@ -3,7 +3,7 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 
-#include "BruteforcerStructs.hpp"
+#include "CommonBruteforcerStructs.hpp"
 
 
 namespace BITFS {

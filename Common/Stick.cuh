@@ -3,7 +3,7 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 
-#include "BruteforcerStructs.hpp"
+#include "CommonBruteforcerStructs.hpp"
 
 namespace BITFS {
 
@@ -21,8 +21,8 @@ namespace BITFS {
     void init_stick_tables();
 
     // converts internal stick positions back into input stick positions.
-    __device__ int correct_stick(int stick);
+    __host__ __device__ int correct_stick(int stick);
 
     // works out the stick position needed to hit a given target with a 1 frame crouchslide.
-    __device__ StickTableData infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw);
+    __host__ __device__ StickTableData infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw);
 }

@@ -11,6 +11,20 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="LowSpeedRouter.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Common\Camera.cuh" />
+    <ClInclude Include="..\Common\Donut.cuh" />
+    <ClInclude Include="..\Common\Floor.cuh" />
+    <ClInclude Include="..\Common\Movement.cuh" />
+    <ClInclude Include="..\Common\Stick.cuh" />
+    <ClInclude Include="..\Common\Surface.cuh" />
+    <ClInclude Include="..\Common\Trig.cuh" />
+    <ClInclude Include="..\Common\VMath.cuh" />
+    <ClInclude Include="LowSpeedRouteStructs.hpp" />
+  </ItemGroup>
+  <ItemGroup>
     <CudaCompile Include="..\Common\Camera.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
@@ -35,25 +49,10 @@
     <CudaCompile Include="..\Common\VMath.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
-    <CudaCompile Include="HiSpeedRouterGPUV2.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp" />
-    <ClInclude Include="..\Common\Camera.cuh" />
-    <ClInclude Include="..\Common\Donut.cuh" />
-    <ClInclude Include="..\Common\Floor.cuh" />
-    <ClInclude Include="..\Common\Movement.cuh" />
-    <ClInclude Include="..\Common\Stick.cuh" />
-    <ClInclude Include="..\Common\Surface.cuh" />
-    <ClInclude Include="..\Common\Trig.cuh" />
-    <ClInclude Include="..\Common\VMath.cuh" />
-    <ClInclude Include="HighSpeedRouteStructs.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{8AC53D90-60A6-4657-8986-910DCFCF61F8}</ProjectGuid>
-    <RootNamespace>HighSpeedGPURouter</RootNamespace>
+    <ProjectGuid>{6A2D5C31-EDBD-4EF0-BEF5-03077A322293}</ProjectGuid>
+    <RootNamespace>LowSpeedPURouter</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -96,8 +95,6 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <AdditionalOptions>-fmad=false %(AdditionalOptions)</AdditionalOptions>
-      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -117,8 +114,6 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <AdditionalOptions>-fmad=false %(AdditionalOptions)</AdditionalOptions>
-      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

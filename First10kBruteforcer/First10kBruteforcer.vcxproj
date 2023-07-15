@@ -11,6 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="..\Common\Camera.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
     <CudaCompile Include="..\Common\Floor.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
@@ -31,7 +34,8 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Common\BruteforcerStructs.hpp" />
+    <ClInclude Include="..\Common\Camera.cuh" />
+    <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp" />
     <ClInclude Include="..\Common\Floor.cuh" />
     <ClInclude Include="..\Common\Movement.cuh" />
     <ClInclude Include="..\Common\Stick.cuh" />

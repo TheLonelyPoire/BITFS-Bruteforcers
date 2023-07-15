@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{759018c8-f3b0-4507-8612-f2ec715718a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{b6fd8d21-60bd-4051-9083-ffa169ca1d09}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Common\VMath.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Trig.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="LowSpeedRouteStructs.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Donut.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Camera.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Surface.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Stick.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Movement.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Floor.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\Common\VMath.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Trig.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Donut.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Camera.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Surface.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Stick.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Movement.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Floor.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>

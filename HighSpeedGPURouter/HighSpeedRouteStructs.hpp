@@ -1,30 +1,7 @@
 #pragma once
+#include "../Common/CommonBruteforcerStructs.hpp"
 
 namespace BITFS {
-
-    struct FancySlideInfo {
-        int endFacingAngle;
-        int endSlidingAngle;
-        float endSpeed;
-        float endPos[3];
-    };
-
-    struct AirInfo {
-        float endSpeed;
-        float endPos[3];
-    };
-
-    struct StickTableData {
-        int stickX;
-        int stickY;
-        float magnitude;
-        int angle;
-    };
-
-    struct DonutData {
-        float overlapArea;
-        int hauBand[2][2];
-    };
 
     struct MotionData13 {
         float nextPos[3];
