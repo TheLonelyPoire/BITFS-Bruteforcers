@@ -115,332 +115,6 @@ void init_attainable_arctans() {
 }
 
 
-//Thank you Spud!! Our precious baby function, needed for getting the range of camera yaws on the pole.
-// it relies on the current floor Y, and the base camera yaw,
-// but for the current floor Y... it isn't really needed.
-// and for the base camera yaw, we just do the shitty approximation where the camera is pointed directly at the pole
-// because that gets things right *enough*.
-int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle) {
-    float baseCameraDist = 1400.0;
-    short baseCameraPitch = 0x05B0;
-    short baseCameraYaw = -8192;
-
-    //SurfaceG* floor;
-    //float floorY;
-
-    //float xOff = currentPosition[0] + gSineTableG[fix((int)baseCameraYaw) >> 4] * 40.f;
-    //float zOff = currentPosition[2] + gCosineTableG[fix((int)baseCameraYaw) >> 4] * 40.f;
-    //float offPos[3] = { xOff, currentPosition[1], zOff };
-
-    //int floorIdx = find_floorG(offPos, &floor, floorY, floorsG, total_floorsG);
-    //floorY = floorY - currentPosition[1];
-
-    //if (floorIdx != -1) {
-        //if (floorY > 0) {
-            //if (!(floor->normal[2] == 0.f && floorY < 100.f)) {
-                //baseCameraPitch += atan2sG(40.f, floorY);
-            //}
-        //}
-    //}
-    
-    // so, why was all this commented out? Well, offPos is just going to basically be on the pole platform, because
-    // 40 units off isn't that much. And the height is the current height.
-    // finding the floor would find the floor of the pole platform.
-    // floorY would yield a negative number since we're on the pole, which is higher than the pole platform.
-    // and so, the if statement is skipped.
-
-    //float posMul = 1.f;
-    //float posBound = 1200.f; //pole
-    //float focMul = 0.9f;
-    //float focBound = 200.f;
-
-    //float posY = (currentFloorY - currentPosition[1]) * posMul;
-
-    //if (posY > posBound) {
-        //posY = posBound;
-    //}
-
-    //if (posY < -posBound) {
-        //posY = -posBound;
-    //}
-
-    //float focusY = (currentFloorY - currentPosition[1]) * focMul;
-
-    //if (focusY > focBound) {
-        //focusY = focBound;
-    //}
-
-    //if (focusY < -focBound) {
-        //focusY = -focBound;
-    //}
-    
-    // see, all the above segment was skipped because we're probably pretty close to the ground, but
-    // have an unknown level of closeness. Focus updates pretty fast, faster than pan
-    // so we can safely assume we're pretty damn close to the ground. So especially posY can be assumed to be near 0
-    // while focusY is decently close to 0, enough to be neglected, I think. They will be negative.
-
-    baseCameraPitch = baseCameraPitch + 2304;
-
-    float cameraPos[3] = { currentPosition[0] + baseCameraDist * gCosineTableG[fix((int)baseCameraPitch) >> 4] * gSineTableG[fix((int)baseCameraYaw) >> 4],
-                       currentPosition[1] + 125.0f + baseCameraDist * gSineTableG[fix((int)baseCameraPitch) >> 4],
-                       currentPosition[2] + baseCameraDist * gCosineTableG[fix((int)baseCameraPitch) >> 4] * gCosineTableG[fix((int)baseCameraYaw) >> 4]
-    };
-    // posY was removed from the camera position height because it's close to 0.
-
-    float pan[3] = { 0, 0, 0 };
-    float temp[3] = { 0, 0, 0 };
-
-    // Get distance and angle from camera to Mario.
-    float dx = currentPosition[0] - cameraPos[0];
-    float dy = currentPosition[1] - cameraPos[1];
-    float dz = currentPosition[2] - cameraPos[2];
-
-    float cameraDist = sqrtf(dx * dx + dy * dy + dz * dz);
-    float cameraPitch = atan2s(sqrtf(dx * dx + dz * dz), dy);
-    float cameraYaw = atan2s(dz, dx);
-
-    // The camera will pan ahead up to about 30% of the camera's distance to Mario.
-    pan[2] = gSineTableG[0xC0] * cameraDist;
-
-    temp[0] = pan[0];
-    temp[1] = pan[1];
-    temp[2] = pan[2];
-
-    pan[0] = temp[2] * gSineTableG[fix((int)faceAngle) >> 4] + temp[0] * gCosineTableG[fix((int)faceAngle) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)faceAngle) >> 4] - temp[0] * gSineTableG[fix((int)faceAngle) >> 4];
-
-    // rotate in the opposite direction
-    cameraYaw = -cameraYaw;
-
-    temp[0] = pan[0];
-    temp[1] = pan[1];
-    temp[2] = pan[2];
-
-    pan[0] = temp[2] * gSineTableG[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTableG[fix((int)cameraYaw) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)cameraYaw) >> 4] - temp[0] * gSineTableG[fix((int)cameraYaw) >> 4];
-
-    // Only pan left or right
-    pan[2] = 0.f;
-
-    cameraYaw = -cameraYaw;
-
-    temp[0] = -pan[0]; //pole
-    temp[1] = pan[1];
-    temp[2] = pan[2];
-
-    pan[0] = temp[2] * gSineTableG[fix((int)cameraYaw) >> 4] + temp[0] * gCosineTableG[fix((int)cameraYaw) >> 4];
-    pan[2] = temp[2] * gCosineTableG[fix((int)cameraYaw) >> 4] - temp[0] * gSineTableG[fix((int)cameraYaw) >> 4];
-
-    float cameraFocus[3] = { currentPosition[0] + pan[0], currentPosition[1] + 125.0f + pan[1], currentPosition[2] + pan[2] };
-    // focusY removed because it's probably 0-ish.
-    // and makes negligible difference on the camera yaw.
-
-    dx = cameraFocus[0] - lakituPosition[0];
-    dy = cameraFocus[1] - lakituPosition[1];
-    dz = cameraFocus[2] - lakituPosition[2];
-
-    cameraDist = sqrtf(dx * dx + dy * dy + dz * dz);
-    cameraPitch = atan2s(sqrtf(dx * dx + dz * dz), dy);
-    cameraYaw = atan2s(dz, dx);
-
-    if (cameraPitch > 15872) {
-        cameraPitch = 15872;
-    }
-    if (cameraPitch < -15872) {
-        cameraPitch = -15872;
-    }
-
-    cameraFocus[0] = lakituPosition[0] + cameraDist * gCosineTableG[fix((int)cameraPitch) >> 4] * gSineTableG[fix((int)cameraYaw) >> 4];
-    cameraFocus[1] = lakituPosition[1] + cameraDist * gSineTableG[fix((int)cameraPitch) >> 4];
-    cameraFocus[2] = lakituPosition[2] + cameraDist * gCosineTableG[fix((int)cameraPitch) >> 4] * gCosineTableG[fix((int)cameraYaw) >> 4];
-
-    return atan2s(lakituPosition[2] - cameraFocus[2], lakituPosition[0] - cameraFocus[0]);
-}
-
-
-// computes 1QF of crouchslide, given stick position, starting position, starting speed, starting facing angle, camera angle.
-// might be inaccurate, takes some shortcuts.
-// note that it takes the floor normal as a parameter, this is so we don't have to keep recomputing that shit.
-SlideInfo sim_slide(StickTableData stick, float* startPos, float startSpeed, int startAngle, int camera, float* slope) {
-    
-    // initialize some variables we'll be reusing because they get updated
-    float nextPos[3];
-    nextPos[0] = startPos[0];
-    nextPos[1] = startPos[1];
-    nextPos[2] = startPos[2];
-    float speed = startSpeed;
-    int facingAngle = fix(startAngle);
-    int cameraYaw = camera;
-    
-    int slopeAngle = atan2s(slope[2], slope[0]);
-    slopeAngle = fix(slopeAngle);
-    float steepness = sqrtf(slope[0] * slope[0] + slope[2] * slope[2]);
-    
-    float intendedMag = ((stick.magnitude / 64.0f) * (stick.magnitude / 64.0f)) * 32.0f;
-    
-    // and the angle stuff
-    int intendedDYaw = stick.angle + cameraYaw - facingAngle;
-    intendedDYaw = fix(intendedDYaw);
-    float forward = gCosineTableG[intendedDYaw >> 4];
-    float sideward = gSineTableG[intendedDYaw >> 4];
-    
-    float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
-    
-    // and the speed updating from sliding stuff
-    float velX = speed * gSineTableG[facingAngle >> 4];
-    float velZ = speed * gCosineTableG[facingAngle >> 4];
-    float oldSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX += velZ * (intendedMag / 32.0f) * sideward * 0.05f;
-    velZ -= velX * (intendedMag / 32.0f) * sideward * 0.05f;
-    float newSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX = velX * oldSpeed / newSpeed;
-    velZ = velZ * oldSpeed / newSpeed;
-    velX += 7.0f * steepness * gSineTableG[slopeAngle >> 4];
-    velZ += 7.0f * steepness * gCosineTableG[slopeAngle >> 4];
-    velX *= lossFactor;
-    velZ *= lossFactor;
-    
-    nextPos[0] = nextPos[0] + slope[1] * (velX / 4.0f);
-    nextPos[2] = nextPos[2] + slope[1] * (velZ / 4.0f);
-    
-    // and update the sliding yaw
-    int slidingYaw = atan2s(velZ, velX);
-    speed = -sqrtf(velX * velX + velZ * velZ);
-    
-    // and your new angle
-    facingAngle = slidingYaw + 0x8000;
-    facingAngle = fix(facingAngle);
-    
-    // and return the result
-    struct SlideInfo solution;
-    solution.endAngle = facingAngle;
-    solution.endSpeed = speed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-
-    return solution;
-}
-
-// computes 1QF of crouchslide, given stick position, starting position, starting speed, starting facing angle, camera angle.
-// will be totally accurate.
-FancySlideInfo precise_sim_slide(StickTableData stick, float* startPos, float startSpeed, float vX, float vZ, int faceAngle, int slideYaw, int camera, bool polePlat) {
-    
-    // initialize some variables we'll be reusing because they get updated
-    float nextPos[3];
-    nextPos[0] = startPos[0];
-    nextPos[1] = startPos[1];
-    nextPos[2] = startPos[2];
-    float speed = startSpeed;
-    int facingAngle = fix(faceAngle);
-    int slidingYaw = fix(slideYaw);
-    int cameraYaw = camera;
-    
-    float intendedMag = ((stick.magnitude / 64.0f) * (stick.magnitude / 64.0f)) * 32.0f;
-    
-    // and the angle stuff
-    int intendedDYaw = stick.angle + cameraYaw - slidingYaw;
-    intendedDYaw = fix(intendedDYaw);
-    float forward = gCosineTableG[intendedDYaw >> 4];
-    float sideward = gSineTableG[intendedDYaw >> 4];
-    
-    // and the 10k loss factor stuff.
-    if (forward < 0.0f && speed >= 0.0f) {
-        forward *= 0.5f + 0.5f * speed / 100.0f;
-    }
-    float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
-    
-    // and the speed updating from sliding stuff
-    float velX = vX;
-    float velZ = vZ;
-    float oldSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX += velZ * (intendedMag / 32.0f) * sideward * 0.05f;
-    velZ -= velX * (intendedMag / 32.0f) * sideward * 0.05f;
-    float newSpeed = sqrtf(velX * velX + velZ * velZ);
-    velX = velX * oldSpeed / newSpeed;
-    velZ = velZ * oldSpeed / newSpeed;
-    
-    // we need this because the pole platform has that 0.999999 thing for its slope.
-    if(polePlat) {
-        velX *= lossFactor;
-        velZ *= lossFactor;
-        nextPos[0] = nextPos[0] + thatNearOneConstant * (velX / 4.0f);
-        nextPos[2] = nextPos[2] + thatNearOneConstant * (velZ / 4.0f);
-    }
-    else {
-        SurfaceG* floor;
-        float floorHeight;
-        int floorIdx = find_floor(nextPos, &floor, floorHeight, floorsG, total_floorsG);
-        int slopeAngle = atan2sG(floor->normal[2], floor->normal[0]);
-        slopeAngle = fix(slopeAngle);
-        float steepness = sqrtf(floor->normal[0] * floor->normal[0] + floor->normal[2] * floor->normal[2]);
-        velX += 7.0f * steepness * gSineTableG[slopeAngle >> 4];
-        velZ += 7.0f * steepness * gCosineTableG[slopeAngle >> 4];
-        velX *= lossFactor;
-        velZ *= lossFactor;
-        nextPos[0] = nextPos[0] + floor->normal[1] * (velX / 4.0f);
-        nextPos[2] = nextPos[2] + floor->normal[1] * (velZ / 4.0f);
-    }
-    
-    // and update the sliding yaw
-    slidingYaw = atan2sG(velZ, velX);
-    int newFacingDYaw = (short)(facingAngle - slidingYaw);
-    if (newFacingDYaw > 0 && newFacingDYaw <= 0x4000) {
-        if ((newFacingDYaw -= 0x200) < 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > -0x4000 && newFacingDYaw < 0) {
-        if ((newFacingDYaw += 0x200) > 0) {
-            newFacingDYaw = 0;
-        }
-    }
-    else if (newFacingDYaw > 0x4000 && newFacingDYaw < 0x8000) {
-        if ((newFacingDYaw += 0x200) > 0x8000) {
-            newFacingDYaw = 0x8000;
-        }
-    }
-    else if (newFacingDYaw > -0x8000 && newFacingDYaw < -0x4000) {
-        if ((newFacingDYaw -= 0x200) < -0x8000) {
-            newFacingDYaw = -0x8000;
-        }
-    }
-    
-    // adjust your outgoing speed, now that the X and Z velocities are pinned down
-    if (newFacingDYaw > -0x4000 && newFacingDYaw < 0x4000) {
-        speed = sqrtf(velX * velX + velZ * velZ);
-    }
-    else {
-        speed = -sqrtf(velX * velX + velZ * velZ);
-    }
-    
-    // and your new angle
-    facingAngle = slidingYaw + newFacingDYaw;
-    facingAngle = fix(facingAngle);
-    slidingYaw = fix(slidingYaw);
-    
-    // and return the result
-    struct FancySlideInfo solution;
-    solution.endFacingAngle = facingAngle;
-    solution.endSlidingAngle = slidingYaw;
-    solution.endSpeed = speed;
-    solution.endPos[0] = nextPos[0];
-    solution.endPos[1] = nextPos[1];
-    solution.endPos[2] = nextPos[2];
-
-    return solution;
-}
-
-// burns speed while walking against OOB for a given number of frames.
-float speed_burn(float speed, int frames) {
-    float finalvel = speed;
-    for (int i = 1; i <= frames; i++) {
-        finalvel += 1.1f;
-    }
-    return finalvel;
-}
-
-
 bool second_tenk_compute(AllData data, AllData* dataPoint) {
     
     // alright, so here's the deal. We can compute a rough approximation of the base camera yaw.
@@ -451,7 +125,7 @@ bool second_tenk_compute(AllData data, AllData* dataPoint) {
     int maxCamYaw = 0;
     int minCamYaw = 65536;
     for (int t = -32768; t < 32768; t++) {
-        int cyaw = fine_camera_yaw(data.positions.posPole, data.positions.posCam1, (short)t);
+        int cyaw = fine_camera_yaw(data.positions.posPole, data.positions.posCam1, (short)t, true);
         // -8192 is a guess.
         if (fix(cyaw) > maxCamYaw) {
             maxCamYaw = fix(cyaw);
@@ -468,7 +142,11 @@ bool second_tenk_compute(AllData data, AllData* dataPoint) {
         }
         for (int i = 0; i < 20129; i++) {
         
-            FancySlideInfo poleslide = precise_sim_slide(stickTab[i], data.positions.posPole, fminf((stickTab[i].magnitude / 64.0f) * (stickTab[i].magnitude / 64.0f) * 32.0f, 8.0f), data.velocities.poleVelX, data.velocities.poleVelZ, stickTab[i].angle + camYaw, data.angles.slidePole, camYaw, true);
+            FancySlideInfo poleslide;
+            
+            if (!sim_slide(stickTab[i], data.positions.posPole, fminf((stickTab[i].magnitude / 64.0f) * (stickTab[i].magnitude / 64.0f) * 32.0f, 8.0f), data.velocities.poleVelX, data.velocities.poleVelZ, stickTab[i].angle + camYaw, data.angles.slidePole, camYaw, true, poleslide)) {
+                continue;
+            }
         
             if(poleslide.endSpeed < 0.0f) {
                 continue;
@@ -502,7 +180,11 @@ bool second_tenk_compute(AllData data, AllData* dataPoint) {
             // the camera is a bit badly simulated because of panning stuff, but it's accurate enough for our purposes.
             // badly simulate the 10k, mainly because we have a horrifying amount of strainings to get through.
             for (int j = 0; j < 20129; j++) {
-                FancySlideInfo crudetenk = precise_sim_slide(stickTab[j], crudepoleair.endPos, crudepoleair.endSpeed, crudepoleair.endSpeed * gSineTable[poleslide.endFacingAngle >> 4], crudepoleair.endSpeed * gCosineTable[poleslide.endFacingAngle >> 4], poleslide.endFacingAngle, poleslide.endSlidingAngle, camYawTen, false);
+                FancySlideInfo crudetenk;
+                if (!sim_slide(stickTab[j], crudepoleair.endPos, crudepoleair.endSpeed, crudepoleair.endSpeed * gSineTable[poleslide.endFacingAngle >> 4], crudepoleair.endSpeed * gCosineTable[poleslide.endFacingAngle >> 4], poleslide.endFacingAngle, poleslide.endSlidingAngle, camYawTen, false, crudetenk)) {
+                    continue;
+                }
+
                 if (crudetenk.endSpeed < -2.147e+09 || crudetenk.endSpeed > -1.5e+09){
                     continue;
                 }
@@ -546,7 +228,10 @@ bool second_tenk_compute(AllData data, AllData* dataPoint) {
                         continue;
                     }
                     // at this point, we know that the straining hits the 1-up platform.
-                    FancySlideInfo finetenk = precise_sim_slide(stickTab[j], nextPos, speed, airVelX, airVelZ, poleslide.endFacingAngle, poleslide.endSlidingAngle, camYawTen, false);
+                    FancySlideInfo finetenk;
+                    if (!sim_slide(stickTab[j], nextPos, speed, airVelX, airVelZ, poleslide.endFacingAngle, poleslide.endSlidingAngle, camYawTen, false, finetenk)) {
+                        continue;
+                    }
                     if (finetenk.endSpeed < -2.147e+09 || finetenk.endSpeed > -1.5e+09){
                         continue;
                     }
@@ -629,7 +314,7 @@ bool move14(AllData data, AllData* dataPoint) {
         if (!attainableArctans[t]) {
             continue;
         }
-        int fangle = fix(gArctanTableG[t] + camYaw);
+        int fangle = fix(gArctanTable[t] + camYaw);
         
         int dist23 = fmin(fix(fangle - (direction - (16 * 16))), fix((direction - (16 * 16)) - fangle));
         int dist12 = fmin(fix(fangle - (direction + (16 * 16))), fix((direction + (16 * 16)) - fangle));
@@ -654,7 +339,10 @@ bool move14(AllData data, AllData* dataPoint) {
                 continue;
             }
             // simulate the slide
-            FancySlideInfo lastslide = precise_sim_slide(sticksol, data.positions.pos14, speed, speed * gSineTable[fangle >> 4], speed * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false);
+            FancySlideInfo lastslide;
+            if (!sim_slide(sticksol, data.positions.pos14, speed, speed * gSineTable[fangle >> 4], speed * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, lastslide)) {
+                continue;
+            }
             // must travel along the needed HAU going in
             if (lastslide.endFacingAngle >> 4 != data.targets.hau) {
                 continue;
@@ -711,7 +399,7 @@ bool move14(AllData data, AllData* dataPoint) {
             (dataPoint->angles).slidePole = lastslide.endSlidingAngle;
             (dataPoint->waits).delayFrames = delay + 20;
             if(second_tenk_compute(*dataPoint, dataPoint)) {
-                    return true;
+                return true;
             }
         }  
     }
@@ -738,7 +426,7 @@ bool move13(AllData data, AllData* dataPoint) {
         if (!attainableArctans[t]) {
             continue;
         }
-        int fangle = fix(gArctanTableG[t] + camYaw);
+        int fangle = fix(gArctanTable[t] + camYaw);
         
         int dist23 = fmin(fix(fangle - (direction - (32 * 16))), fix((direction - (32 * 16)) - fangle));
         int dist12 = fmin(fix(fangle - (direction + (32 * 16))), fix((direction + (32 * 16)) - fangle));
@@ -752,7 +440,7 @@ bool move13(AllData data, AllData* dataPoint) {
         // iterate over stick positions
         for (int i = 0; i < 20129; i++) {
             // simulate the slide
-            SlideInfo crudeslide = sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, fangle, camYaw, startFloor->normal);
+            SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, fangle, camYaw, startFloor->normal);
             // did it land in air?
             if (assess_floor(crudeslide.endPos) != 1) {
                 continue;
@@ -797,7 +485,10 @@ bool move13(AllData data, AllData* dataPoint) {
                 continue;
             }
             // if you made it this far, recompute with precision
-            FancySlideInfo fineslide = precise_sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, data.velocities.vel13 * gSineTable[fangle >> 4], data.velocities.vel13 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false);
+            FancySlideInfo fineslide;
+            if (!sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, data.velocities.vel13 * gSineTable[fangle >> 4], data.velocities.vel13 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                continue;
+            }
             // if the angles match up, the precision recomputation validates the crappy one.
             if (fineslide.endFacingAngle != crudeslide.endAngle) {
                 continue;
@@ -860,7 +551,7 @@ bool move12(AllData data, AllData* dataPoint) {
             if (!attainableArctans[t]) {
                 continue;
             }
-            int fangle = fix(gArctanTableG[t] + camYaw);
+            int fangle = fix(gArctanTable[t] + camYaw);
             // black magic time.
             int dist23 = fmin(fix(fangle - data.donuts.hauBand[a][1] * 16), fix(data.donuts.hauBand[a][1] * 16 - fangle));
             int dist12 = fmin(fix(fangle - data.donuts.hauBand[a][0] * 16), fix(data.donuts.hauBand[a][0] * 16 - fangle));
@@ -874,7 +565,7 @@ bool move12(AllData data, AllData* dataPoint) {
             // iterate over stick positions
             for (int i = 0; i < 20129; i++) {
                 // simulate the slide
-                SlideInfo crudeslide = sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, fangle, camYaw, startFloor->normal);
+                SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, fangle, camYaw, startFloor->normal);
                 // is it in the air?
                 if (assess_floor(crudeslide.endPos) != 1) {
                     continue;
@@ -894,7 +585,10 @@ bool move12(AllData data, AllData* dataPoint) {
                     continue;
                 }
                 // fancily recompute the angles, see if they match the crappy simulation of the slide.
-                FancySlideInfo fineslide = precise_sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, data.velocities.vel12 * gSineTable[fangle >> 4], data.velocities.vel12 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false);
+                FancySlideInfo fineslide;
+                if (!sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, data.velocities.vel12 * gSineTable[fangle >> 4], data.velocities.vel12 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                    continue;
+                }
                 if (fineslide.endFacingAngle != crudeslide.endAngle) {
                     continue;
                 }
@@ -912,15 +606,15 @@ bool move12(AllData data, AllData* dataPoint) {
                 // and so, many routes will involve 28/29 until you can snag your given target.
                 // roughly, this is a "fast compute but might miss stuff" vs "slow compute that won't miss stuff" dial.
             
-                //if (floorIdx < 8 || floorIdx > 32 || floorIdx == 22) {
-                    //continue;
+                if (floorIdx < 8 || floorIdx > 32 || floorIdx == 22) {
+                    continue;
+                }
+                //if (floorheight > -2866.0f) {
+                //    continue;
                 //}
-                if (floorheight > -2866.0f) {
-                    continue;
-                }
-                if (floorIdx != 28 && floorIdx != 29) {
-                    continue;
-                }
+                //if (floorIdx != 28 && floorIdx != 29) {
+                //    continue;
+                //}
                 
                 
                 float nextspeed = airmove.endSpeed;
@@ -959,7 +653,7 @@ bool move12(AllData data, AllData* dataPoint) {
                     (dataPoint->angles).facing12 = fangle;
                     (dataPoint->angles).cam12 = camYaw;
                     (dataPoint->waits).waiting12 = wf;
-                    printf("s\n");
+                    printf("s");
                     if(move13(*dataPoint, dataPoint)) {
                         return true;
                     }
@@ -983,11 +677,13 @@ bool move11(AllData data, AllData* dataPoint) {
     int floorIdx = find_floor(data.positions.pos11, &startFloor, startheight, floors, total_floors);
     // iterate over AU's
     for (int t = 0; t < 8192; t++) {
+
         // can we do that AU?
         if (!attainableArctans[t]) {
             continue;
         }
-        int fangle = fix(gArctanTableG[t] + camYaw);
+        int fangle = fix(gArctanTable[t] + camYaw);
+
         // is it stable?
         if (!stability_check(data.positions.pos11, data.velocities.vel11, fangle)) {
             continue;
@@ -995,7 +691,7 @@ bool move11(AllData data, AllData* dataPoint) {
         // iterate over sticks
         for (int i = 0; i < 20129; i++) {
             // simulate crouchslide.
-            SlideInfo crudeslide = sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, fangle, camYaw, startFloor->normal);
+            SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, fangle, camYaw, startFloor->normal);
             if (assess_floor(crudeslide.endPos) != 1) {
                 continue;
             }
@@ -1025,7 +721,10 @@ bool move11(AllData data, AllData* dataPoint) {
             // ok, since everything appears in fine working order, we resimulate from scratch. The only difference between
             // sim_slide and precise_sim_slide is that the latter handles 10k's (not relevant here), and the latter is
             // pickier about what your end facing angle is.
-            FancySlideInfo fineslide = precise_sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, data.velocities.vel11 * gSineTable[fangle >> 4], data.velocities.vel11 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false); // TODO: Check this
+            FancySlideInfo fineslide;
+            if (!sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, data.velocities.vel11 * gSineTable[fangle >> 4], data.velocities.vel11 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                continue;
+            }
             // if the angle matches, it validates.
             if (fineslide.endFacingAngle != crudeslide.endAngle) {
                 continue;
@@ -1044,15 +743,15 @@ bool move11(AllData data, AllData* dataPoint) {
             // and so, many routes will involve 28/29 until you can snag your given target.
             // roughly, this is a "fast compute but might miss stuff" vs "slow compute that won't miss stuff" dial.
             
-            //if (floorIdx < 8 || floorIdx > 32 || floorIdx == 22) {
-                //continue;
+            if (floorIdx < 8 || floorIdx > 32 || floorIdx == 22) {
+                continue;
+            }
+            //if (floorheight > -2866.0f) {
+            //    continue;
             //}
-            if (floorheight > -2866.0f) {
-                continue;
-            }
-            if (floorIdx != 28 && floorIdx != 29) {
-                continue;
-            }
+            //if (floorIdx != 28 && floorIdx != 29) {
+            //    continue;
+            //}
             
             
             float nextspeed = airmove.endSpeed;
@@ -1112,7 +811,7 @@ int main(int argc, char* argv[]) {
     float cameraPosition[3];
     cameraPosition[0] = -1700.0f;
     cameraPosition[1] = -2300.0f;
-    cameraPosition[2] = 1200.0f;
+    cameraPosition[2] = 500.0f;
     // immutable
     float polePosition[3];
     polePosition[0] = 6605.0f;
@@ -1120,19 +819,19 @@ int main(int argc, char* argv[]) {
     polePosition[2] = 266.0f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = 5700.0f - (65536.0f * 29.0f);
+    firstPosition[0] = -5700.0f - (65536.0f * 29.0f);
     firstPosition[1] = -2917.0f;
     firstPosition[2] = 266.0f;
     // changeable
     float firstSpeed = -5981800.0f;
     // changeable
-    int targetPlat = 1;
-    int targetPUX = -80;
-    int targetPUZ = 0;
+    int targetPlat = 6;
+    int targetPUX = 75;
+    int targetPUZ = -30;
     // for best results, pick 2 speed closer to 0 than the first output you got from the pole thing
     // gives you more robust solutions that way.
-    int targetSpeed = -4204757;
-    int targetHAU = 3072;
+    int targetSpeed = -4232649;
+    int targetHAU = 1272;
        
     std::string outFile = "outData.csv";
     

@@ -38,7 +38,7 @@ namespace BITFS {
     }
 
 
-    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle) {
+    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, bool onPole) {
         
         // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
         float* cosineTable, * sineTable;
@@ -111,7 +111,7 @@ namespace BITFS {
         baseCameraPitch = baseCameraPitch + 2304;
 
         float cameraPos[3] = { currentPosition[0] + baseCameraDist * cosineTable[fix((int)baseCameraPitch) >> 4] * sineTable[fix((int)baseCameraYaw) >> 4],
-                            currentPosition[1] + 125.0f - 10.0f + baseCameraDist * sineTable[fix((int)baseCameraPitch) >> 4],
+                            currentPosition[1] + 125.0f + baseCameraDist * sineTable[fix((int)baseCameraPitch) >> 4],
                             currentPosition[2] + baseCameraDist * cosineTable[fix((int)baseCameraPitch) >> 4] * cosineTable[fix((int)baseCameraYaw) >> 4]
         };
         // posY was removed from the camera position height because it's close to 0.
@@ -153,14 +153,14 @@ namespace BITFS {
 
         cameraYaw = -cameraYaw;
 
-        temp[0] = pan[0];
+        temp[0] = onPole ? -pan[0] : pan[0];
         temp[1] = pan[1];
         temp[2] = pan[2];
 
         pan[0] = temp[2] * sineTable[fix((int)cameraYaw) >> 4] + temp[0] * cosineTable[fix((int)cameraYaw) >> 4];
         pan[2] = temp[2] * cosineTable[fix((int)cameraYaw) >> 4] - temp[0] * sineTable[fix((int)cameraYaw) >> 4];
 
-        float cameraFocus[3] = { currentPosition[0] + pan[0], currentPosition[1] + 125.0f + pan[1] - 90.0f, currentPosition[2] + pan[2] };
+        float cameraFocus[3] = { currentPosition[0] + pan[0], currentPosition[1] + 125.0f + pan[1], currentPosition[2] + pan[2] };
         // focusY removed because it's probably 0-ish.
         // and makes negligible difference on the camera yaw.
 

@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
     printf("floats(%f,%f)\n", lowerSpeed, upperSpeed);
     
     initialise_floors();
-    init_stick_tables();
+    init_stick_tables(true);
     init_camera_angles();
 
     std::ofstream wf(outFile);

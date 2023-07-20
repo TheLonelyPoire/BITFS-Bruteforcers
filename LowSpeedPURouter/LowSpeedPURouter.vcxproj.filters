@@ -63,4 +63,7 @@
       <Filter>Source</Filter>
     </CudaCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LowSpeedRouter.cpp" />
+  </ItemGroup>
 </Project>

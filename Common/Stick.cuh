@@ -13,12 +13,12 @@ namespace BITFS {
     // novel function here. Basically, some stick positions are redundant, so what this does is iterates through the stick positions,
     //computes their magnitudes and angles, iterates through stick positions again to look for any exact copies, and if there's no exact
     //copy, adds its data to the table of unique stick positions. This cuts down on the number of stick positions to test.
-    __global__ void init_stick_tablesG();
+    __global__ void init_stick_tablesG(bool backwardsOnly = false);
 
     // novel function here. Basically, some stick positions are redundant, so what this does is iterates through the stick positions,
     //computes their magnitudes and angles, iterates through stick positions again to look for any exact copies, and if there's no exact
     //copy, adds its data to the table of unique stick positions. This cuts down on the number of stick positions to test.
-    void init_stick_tables();
+    void init_stick_tables(bool backwardsOnly = false);
 
     // converts internal stick positions back into input stick positions.
     __host__ __device__ int correct_stick(int stick);

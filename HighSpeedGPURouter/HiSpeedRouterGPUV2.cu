@@ -657,7 +657,7 @@ int main(int argc, char* argv[]) {
     printf("Initializing Floors/Stick Tables...\n\n");
 
     initialise_floorsG << <1, 1 >> > ();
-    init_stick_tablesG << <1, 1 >> > ();
+    init_stick_tablesG << <1, 1 >> > (false);
 
 
     int nFirstBlocks = (20129 * 8192 + nThreads - 1) / nThreads;
