@@ -440,16 +440,19 @@ bool move13(AllData data, AllData* dataPoint) {
         // iterate over stick positions
         for (int i = 0; i < 20129; i++) {
             // simulate the slide
-            SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, fangle, camYaw, startFloor->normal);
+            FancySlideInfo fineslide;
+            if (!sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, data.velocities.vel13 * gSineTable[fangle >> 4], data.velocities.vel13 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                continue;
+            }
             // did it land in air?
-            if (assess_floor(crudeslide.endPos) != 1) {
+            if (assess_floor(fineslide.endPos) != 1) {
                 continue;
             }
             // simulate air movement
             AirInfo airmove;
 
             // did it land on ground?
-            if(!sim_airstep(crudeslide.endPos, crudeslide.endSpeed, crudeslide.endAngle, true, airmove) || (assess_floor(airmove.endPos) != 2 && assess_floor(airmove.endPos) != 3)) {
+            if(!sim_airstep(fineslide.endPos, fineslide.endSpeed, fineslide.endFacingAngle, true, airmove) || (assess_floor(airmove.endPos) != 2 && assess_floor(airmove.endPos) != 3)) {
                 continue;
             }
             // did you hit the right PU?
@@ -484,15 +487,7 @@ bool move13(AllData data, AllData* dataPoint) {
             if(data.targets.platKey == 6 && (floorIdx < 8 || floorIdx > 13)) {
                 continue;
             }
-            // if you made it this far, recompute with precision
-            FancySlideInfo fineslide;
-            if (!sim_slide(stickTab[i], data.positions.pos13, data.velocities.vel13, data.velocities.vel13 * gSineTable[fangle >> 4], data.velocities.vel13 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
-                continue;
-            }
-            // if the angles match up, the precision recomputation validates the crappy one.
-            if (fineslide.endFacingAngle != crudeslide.endAngle) {
-                continue;
-            }
+
             float nextspeed = airmove.endSpeed;
             // iterate over waiting frames.
             for (int wf = 0; wf <= 3; wf++) {
@@ -500,7 +495,7 @@ bool move13(AllData data, AllData* dataPoint) {
                     nextspeed *= 0.98f;
                 }
                 // are we stable against OOB?
-                bool stable = stability_check(airmove.endPos, nextspeed, crudeslide.endAngle);
+                bool stable = stability_check(airmove.endPos, nextspeed, fineslide.endFacingAngle);
                 // also, if the speed we're trying to hit is above 0.94x our current speed, then that's bad
                 // and waiting longer won't help.
                 if (!stable || fabs((float)(data.targets.speed)) > 0.94f * fabs(nextspeed)) {
@@ -565,15 +560,18 @@ bool move12(AllData data, AllData* dataPoint) {
             // iterate over stick positions
             for (int i = 0; i < 20129; i++) {
                 // simulate the slide
-                SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, fangle, camYaw, startFloor->normal);
+                FancySlideInfo fineslide;
+                if (!sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, data.velocities.vel12 * gSineTable[fangle >> 4], data.velocities.vel12 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                    continue;
+                }
                 // is it in the air?
-                if (assess_floor(crudeslide.endPos) != 1) {
+                if (assess_floor(fineslide.endPos) != 1) {
                     continue;
                 }
                 // simulate air movement
                 AirInfo airmove;
                 
-                if (!sim_airstep(crudeslide.endPos, crudeslide.endSpeed, crudeslide.endAngle, true, airmove)) {
+                if (!sim_airstep(fineslide.endPos, fineslide.endSpeed, fineslide.endFacingAngle, true, airmove)) {
                     continue;
                 }
                 // is it on the ground?
@@ -581,18 +579,11 @@ bool move12(AllData data, AllData* dataPoint) {
                     continue;
                 }
                 // did you stably land?
-                if (!stability_check(airmove.endPos, airmove.endSpeed, crudeslide.endAngle)) {
+                if (!stability_check(airmove.endPos, airmove.endSpeed, fineslide.endFacingAngle)) {
                     continue;
                 }
-                // fancily recompute the angles, see if they match the crappy simulation of the slide.
-                FancySlideInfo fineslide;
-                if (!sim_slide(stickTab[i], data.positions.pos12, data.velocities.vel12, data.velocities.vel12 * gSineTable[fangle >> 4], data.velocities.vel12 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
-                    continue;
-                }
-                if (fineslide.endFacingAngle != crudeslide.endAngle) {
-                    continue;
-                }
-                // ok, the angles match up. Time to check if we're on the right ground.
+     
+                // Time to check if we're on the right ground.
                 Surface* floor;
                 float floorheight;
                 int floorIdx = find_floor(airmove.endPos, &floor, floorheight, floors, total_floors);
@@ -624,7 +615,7 @@ bool move12(AllData data, AllData* dataPoint) {
                         nextspeed *= 0.98f;
                     }
                     // make sure you're stable against OOB
-                    if ((!stability_check(airmove.endPos, airmove.endSpeed, crudeslide.endAngle)) && wf > 0) {
+                    if ((!stability_check(airmove.endPos, airmove.endSpeed, fineslide.endFacingAngle)) && wf > 0) {
                         break;
                     }
                     // basically, if the speeds are incompatible with getting to the target with our needed speed, give up
@@ -691,15 +682,18 @@ bool move11(AllData data, AllData* dataPoint) {
         // iterate over sticks
         for (int i = 0; i < 20129; i++) {
             // simulate crouchslide.
-            SlideInfo crudeslide = crude_sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, fangle, camYaw, startFloor->normal);
-            if (assess_floor(crudeslide.endPos) != 1) {
+            FancySlideInfo fineslide;
+            if (!sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, data.velocities.vel11 * gSineTable[fangle >> 4], data.velocities.vel11 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
+                continue;
+            }
+            if (assess_floor(fineslide.endPos) != 1) {
                 continue;
             }
             //simulate air steps.
             AirInfo airmove;
             bool goodAir = false;
             for (int qf = 1; qf <= 4; qf++) {
-                if (!sim_airstep(((qf == 1) ? crudeslide.endPos : airmove.endPos), ((qf == 1) ? crudeslide.endSpeed : airmove.endSpeed), crudeslide.endAngle, (qf == 1), airmove) || assess_floor(airmove.endPos) == 0) {
+                if (!sim_airstep(((qf == 1) ? fineslide.endPos : airmove.endPos), ((qf == 1) ? fineslide.endSpeed : airmove.endSpeed), fineslide.endFacingAngle, (qf == 1), airmove) || assess_floor(airmove.endPos) == 0) {
                     break;
                 }
                 if (assess_floor(airmove.endPos) == 2 || assess_floor(airmove.endPos) == 3) {
@@ -711,24 +705,14 @@ bool move11(AllData data, AllData* dataPoint) {
                 continue;
             }
             // stable landing spot?
-            if (!stability_check(airmove.endPos, airmove.endSpeed, crudeslide.endAngle)) {
+            if (!stability_check(airmove.endPos, airmove.endSpeed, fineslide.endFacingAngle)) {
                 continue;
             }
             // we must check that we've landed on an PU of the same parity as our target, it's a severe constraint.
             if (((int)(round(airmove.endPos[0] / 65536.0f)) % 2) != (data.targets.inPUX % 2) || ((int)(round(airmove.endPos[2] / 65536.0f)) % 2) != (data.targets.inPUZ % 2)) {
                 continue;
             }
-            // ok, since everything appears in fine working order, we resimulate from scratch. The only difference between
-            // sim_slide and precise_sim_slide is that the latter handles 10k's (not relevant here), and the latter is
-            // pickier about what your end facing angle is.
-            FancySlideInfo fineslide;
-            if (!sim_slide(stickTab[i], data.positions.pos11, data.velocities.vel11, data.velocities.vel11 * gSineTable[fangle >> 4], data.velocities.vel11 * gCosineTable[fangle >> 4], fangle, fangle, camYaw, false, fineslide)) {
-                continue;
-            }
-            // if the angle matches, it validates.
-            if (fineslide.endFacingAngle != crudeslide.endAngle) {
-                continue;
-            }
+
             // Now time to check if we're on the right ground.
             Surface* floor;
             float floorheight;
@@ -761,7 +745,7 @@ bool move11(AllData data, AllData* dataPoint) {
                     nextspeed *= 0.98f;
                 }
                 // is it stable?
-                if ((!stability_check(airmove.endPos, nextspeed, crudeslide.endAngle)) && wf > 0) {
+                if ((!stability_check(airmove.endPos, nextspeed, fineslide.endFacingAngle)) && wf > 0) {
                     break;
                 }
                 // check to see if our speed is acceptable, though admittedly this is pretty fucking arcane.
