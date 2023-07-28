@@ -1,7 +1,7 @@
 #include "Movement.cuh"
 #include "math.h"
 
-#include "Floor.cuh"
+#include "Floors.cuh"
 #include "Trig.cuh"
 
 namespace BITFS {
@@ -80,8 +80,9 @@ namespace BITFS {
         return solution;
     }
 
+
     // computes 1QF of crouchslide, given stick position, starting position, starting speed, starting facing angle, camera angle.
-    __host__ __device__ bool sim_slide(StickTableData stick, float* startPos, float forward_speed, float vX, float vZ, int faceAngle, int slideYaw, int camera, bool usePolePlatform, FancySlideInfo& output) {
+    __host__ __device__ bool sim_slide(StickTableData stick, float* startPos, float startSpeed, float vX, float vZ, int faceAngle, int slideYaw, int camera, bool usePolePlatform, FancySlideInfo& output) {
 
         // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
         float *cosineTable, *sineTable;
@@ -114,8 +115,8 @@ namespace BITFS {
         float sideward = sineTable[intendedDYaw >> 4];
 
         // and the 10k loss factor stuff.
-        if (forward < 0.0f && forward_speed >= 0.0f) {
-            forward *= 0.5f + 0.5f * forward_speed / 100.0f;
+        if (forward < 0.0f && startSpeed >= 0.0f) {
+            forward *= 0.5f + 0.5f * startSpeed / 100.0f;
         }
         float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
 
@@ -174,10 +175,10 @@ namespace BITFS {
 
         // adjust your outgoing speed, now that the X and Z velocities are pinned down
         if (newFacingDYaw > -0x4000 && newFacingDYaw < 0x4000) {
-            forward_speed = sqrtf(velX * velX + velZ * velZ);
+            startSpeed = sqrtf(velX * velX + velZ * velZ);
         }
         else {
-            forward_speed = -sqrtf(velX * velX + velZ * velZ);
+            startSpeed = -sqrtf(velX * velX + velZ * velZ);
         }
 
         // and your new angle
@@ -188,7 +189,7 @@ namespace BITFS {
         // and set output fields
         output.endFacingAngle = facingAngle;
         output.endSlidingAngle = slidingYaw;
-        output.endSpeed = forward_speed;
+        output.endSpeed = startSpeed;
         output.endPos[0] = nextPos[0];
         output.endPos[1] = nextPos[1];
         output.endPos[2] = nextPos[2];
@@ -252,6 +253,36 @@ namespace BITFS {
         output.endPos[2] = nextPos[2];
 
         return true;
+    }
+
+
+    // After a backwards 1QF crouchslide from start to end, will you end up at the target HAU?
+    __host__ __device__ bool angle_match(float* startPos, float* endPos, int targetHau) {
+
+        Surface* floorSet;
+        #if !defined(__CUDA_ARCH__)
+            floorSet = floors;
+        #else
+            floorSet = floorsG;
+        #endif
+
+        Surface* floor;
+        float floorHeight;
+        int floorIdx = find_floor(startPos, &floor, floorHeight, floorSet, total_floors);
+
+        if (floorIdx == -1)
+            return false;
+
+        float velX = (endPos[0] - startPos[0]) * (4.0f / floor->normal[1]);
+        float velZ = (endPos[2] - startPos[2]) * (4.0f / floor->normal[1]);
+
+        // and update the sliding yaw
+        int slideYaw = atan2s(velZ, velX);
+        // using an approximation of the facing angle as just 180 degrees off the slide yaw.
+        int facingAngle = slideYaw + 0x8000;
+        facingAngle = fix(facingAngle);
+
+        return facingAngle >> 4 == targetHau;
     }
 
 

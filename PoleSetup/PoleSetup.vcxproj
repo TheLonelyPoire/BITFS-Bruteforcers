@@ -11,25 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\Common\Camera.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Floors.cu" />
-    <CudaCompile Include="..\Common\Movement.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Stick.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Surface.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Trig.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
-    <CudaCompile Include="First10k.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
+    <ClCompile Include="PoleSetup.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\Camera.cuh" />
@@ -39,10 +21,19 @@
     <ClInclude Include="..\Common\Stick.cuh" />
     <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />
+    <ClInclude Include="PoleSetupStructs.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\Common\Camera.cu" />
+    <CudaCompile Include="..\Common\Floors.cu" />
+    <CudaCompile Include="..\Common\Movement.cu" />
+    <CudaCompile Include="..\Common\Stick.cu" />
+    <CudaCompile Include="..\Common\Surface.cu" />
+    <CudaCompile Include="..\Common\Trig.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{56620771-B74B-4EC7-A555-3038D1985E27}</ProjectGuid>
-    <RootNamespace>First10kBruteforcer</RootNamespace>
+    <ProjectGuid>{CF4A4618-224D-40B1-B5EB-570EE5D12109}</ProjectGuid>
+    <RootNamespace>PoleSetup</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -86,6 +77,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <AdditionalOptions>-fmad=false %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -106,6 +98,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <AdditionalOptions>-fmad=false %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

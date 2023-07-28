@@ -16,7 +16,7 @@
   <ItemGroup>
     <ClInclude Include="..\Common\Camera.cuh" />
     <ClInclude Include="..\Common\Donut.cuh" />
-    <ClInclude Include="..\Common\Floor.cuh" />
+    <ClInclude Include="..\Common\Floors.cuh" />
     <ClInclude Include="..\Common\Movement.cuh" />
     <ClInclude Include="..\Common\Stick.cuh" />
     <ClInclude Include="..\Common\Surface.cuh" />
@@ -31,9 +31,7 @@
     <CudaCompile Include="..\Common\Donut.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
-    <CudaCompile Include="..\Common\Floor.cu">
-      <FileType>CppCode</FileType>
-    </CudaCompile>
+    <CudaCompile Include="..\Common\Floors.cu" />
     <CudaCompile Include="..\Common\Movement.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>

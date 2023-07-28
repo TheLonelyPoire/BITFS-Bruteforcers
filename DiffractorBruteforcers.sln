@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HighSpeedGPURouter", "HighS
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LowSpeedPURouter", "LowSpeedPURouter\LowSpeedPURouter.vcxproj", "{6A2D5C31-EDBD-4EF0-BEF5-03077A322293}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PoleSetup", "PoleSetup\PoleSetup.vcxproj", "{CF4A4618-224D-40B1-B5EB-570EE5D12109}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -27,6 +29,10 @@ Global
 		{6A2D5C31-EDBD-4EF0-BEF5-03077A322293}.Debug|x64.Build.0 = Debug|x64
 		{6A2D5C31-EDBD-4EF0-BEF5-03077A322293}.Release|x64.ActiveCfg = Release|x64
 		{6A2D5C31-EDBD-4EF0-BEF5-03077A322293}.Release|x64.Build.0 = Release|x64
+		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Debug|x64.ActiveCfg = Debug|x64
+		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Debug|x64.Build.0 = Debug|x64
+		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Release|x64.ActiveCfg = Release|x64
+		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2,68 +2,56 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Headers">
-      <UniqueIdentifier>{759018c8-f3b0-4507-8612-f2ec715718a6}</UniqueIdentifier>
+      <UniqueIdentifier>{7d39bc33-0145-48b3-ac32-fc0c22821385}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source">
-      <UniqueIdentifier>{b6fd8d21-60bd-4051-9083-ffa169ca1d09}</UniqueIdentifier>
+      <UniqueIdentifier>{67a9600c-e398-439c-bc69-b31387dc2be9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Common\VMath.cuh">
+    <ClInclude Include="PoleSetupStructs.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Trig.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="LowSpeedRouteStructs.hpp">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Donut.cuh">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Camera.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Surface.cuh">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Stick.cuh">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Common\Movement.cuh">
+    <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Floors.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\Movement.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Stick.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Surface.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\Common\VMath.cu">
-      <Filter>Source</Filter>
-    </CudaCompile>
     <CudaCompile Include="..\Common\Trig.cu">
-      <Filter>Source</Filter>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Donut.cu">
       <Filter>Source</Filter>
     </CudaCompile>
     <CudaCompile Include="..\Common\Camera.cu">
       <Filter>Source</Filter>
     </CudaCompile>
-    <CudaCompile Include="..\Common\Surface.cu">
-      <Filter>Source</Filter>
-    </CudaCompile>
-    <CudaCompile Include="..\Common\Stick.cu">
+    <CudaCompile Include="..\Common\Floors.cu">
       <Filter>Source</Filter>
     </CudaCompile>
     <CudaCompile Include="..\Common\Movement.cu">
       <Filter>Source</Filter>
     </CudaCompile>
-    <CudaCompile Include="..\Common\Floors.cu">
+    <CudaCompile Include="..\Common\Stick.cu">
       <Filter>Source</Filter>
     </CudaCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="LowSpeedRouter.cpp" />
+    <CudaCompile Include="..\Common\Surface.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

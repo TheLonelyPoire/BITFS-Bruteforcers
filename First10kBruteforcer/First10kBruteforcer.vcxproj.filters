@@ -5,9 +5,6 @@
     <CudaCompile Include="..\Common\Trig.cu">
       <Filter>Source</Filter>
     </CudaCompile>
-    <CudaCompile Include="..\Common\Floor.cu">
-      <Filter>Source</Filter>
-    </CudaCompile>
     <CudaCompile Include="..\Common\Movement.cu">
       <Filter>Source</Filter>
     </CudaCompile>
@@ -18,6 +15,9 @@
       <Filter>Source</Filter>
     </CudaCompile>
     <CudaCompile Include="..\Common\Camera.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Floors.cu">
       <Filter>Source</Filter>
     </CudaCompile>
   </ItemGroup>
@@ -36,9 +36,6 @@
     <ClInclude Include="..\Common\Camera.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Floor.cuh">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\Common\Movement.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -49,6 +46,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Surface.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Floors.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

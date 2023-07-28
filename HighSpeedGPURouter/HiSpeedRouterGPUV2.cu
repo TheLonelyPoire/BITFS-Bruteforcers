@@ -12,7 +12,7 @@
 #include "../Common/CommonBruteforcerStructs.hpp"
 #include "../Common/Camera.cuh"
 #include "../Common/Donut.cuh"
-#include "../Common/Floor.cuh"
+#include "../Common/Floors.cuh"
 #include "../Common/Movement.cuh"
 #include "../Common/Stick.cuh"
 #include "../Common/Surface.cuh"

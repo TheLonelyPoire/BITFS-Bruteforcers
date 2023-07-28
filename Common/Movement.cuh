@@ -17,6 +17,9 @@ namespace BITFS {
 
 	__host__ __device__ bool sim_airstep(float* initialPos, float initialSpeed, int initialAngle, bool first, AirInfo& output);
 
+	// After a backwards 1QF crouchslide from start to end, will you end up at the target HAU?
+	__host__ __device__ bool angle_match(float* startPos, float* endPos, int targetHau);
+
 	__host__ __device__ float speed_burn(float speed, int frames);
 
 }

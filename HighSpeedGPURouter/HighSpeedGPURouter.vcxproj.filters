@@ -17,7 +17,7 @@
     <CudaCompile Include="..\Common\Movement.cu">
       <Filter>Source</Filter>
     </CudaCompile>
-    <CudaCompile Include="..\Common\Floor.cu">
+    <CudaCompile Include="..\Common\Floors.cu">
       <Filter>Source</Filter>
     </CudaCompile>
     <CudaCompile Include="..\Common\Donut.cu">
@@ -34,7 +34,7 @@
     <ClInclude Include="..\Common\Camera.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Floor.cuh">
+    <ClInclude Include="..\Common\Floors.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="HighSpeedRouteStructs.hpp">

@@ -8,7 +8,7 @@
 #include "../Common/CommonBruteforcerStructs.hpp"
 #include "../Common/Camera.cuh"
 #include "../Common/Donut.cuh"
-#include "../Common/Floor.cuh"
+#include "../Common/Floors.cuh"
 #include "../Common/Movement.cuh"
 #include "../Common/Stick.cuh"
 #include "../Common/Surface.cuh"
@@ -23,87 +23,8 @@ using namespace BITFS;
 
 bool attainableArctans[8192];
 
-int keyFloors[7][4][2];
-int keyCenter[7][2];
-float thatNearOneConstant;
-
-
-void initialise_keyFloors() {
-    keyFloors[0][0][0] = (int)round(floors[21].min_x);
-    keyFloors[0][0][1] = (int)round(floors[21].min_z);
-    keyFloors[0][1][0] = (int)round(floors[21].min_x);
-    keyFloors[0][1][1] = (int)round(floors[21].max_z);
-    keyFloors[0][2][0] = (int)round(floors[21].max_x);
-    keyFloors[0][2][1] = (int)round(floors[21].min_z);
-    keyFloors[0][3][0] = (int)round(floors[21].max_x);
-    keyFloors[0][3][1] = (int)round(floors[21].max_z);
-    keyFloors[1][0][0] = (int)round(floors[26].min_x);
-    keyFloors[1][0][1] = (int)round(floors[26].min_z);
-    keyFloors[1][1][0] = (int)round(floors[26].min_x);
-    keyFloors[1][1][1] = (int)round(floors[26].max_z);
-    keyFloors[1][2][0] = (int)round(floors[26].max_x);
-    keyFloors[1][2][1] = (int)round(floors[26].min_z);
-    keyFloors[1][3][0] = (int)round(floors[26].max_x);
-    keyFloors[1][3][1] = (int)round(floors[26].max_z);
-    keyFloors[2][0][0] = (int)round(floors[23].min_x);
-    keyFloors[2][0][1] = (int)round(floors[23].min_z);
-    keyFloors[2][1][0] = (int)round(floors[23].min_x);
-    keyFloors[2][1][1] = (int)round(floors[23].max_z);
-    keyFloors[2][2][0] = (int)round(floors[23].max_x);
-    keyFloors[2][2][1] = (int)round(floors[23].min_z);
-    keyFloors[2][3][0] = (int)round(floors[23].max_x);
-    keyFloors[2][3][1] = (int)round(floors[23].max_z);
-    keyFloors[3][0][0] = (int)round(floors[29].min_x);
-    keyFloors[3][0][1] = (int)round(floors[29].min_z);
-    keyFloors[3][1][0] = (int)round(floors[29].min_x);
-    keyFloors[3][1][1] = (int)round(floors[29].max_z);
-    keyFloors[3][2][0] = (int)round(floors[29].max_x);
-    keyFloors[3][2][1] = (int)round(floors[29].min_z);
-    keyFloors[3][3][0] = (int)round(floors[29].max_x);
-    keyFloors[3][3][1] = (int)round(floors[29].max_z);
-    keyFloors[4][0][0] = (int)round(floors[19].min_x);
-    keyFloors[4][0][1] = (int)round(floors[19].min_z);
-    keyFloors[4][1][0] = (int)round(floors[19].min_x);
-    keyFloors[4][1][1] = (int)round(floors[19].max_z);
-    keyFloors[4][2][0] = (int)round(floors[19].max_x);
-    keyFloors[4][2][1] = (int)round(floors[19].min_z);
-    keyFloors[4][3][0] = (int)round(floors[19].max_x);
-    keyFloors[4][3][1] = (int)round(floors[19].max_z);
-    keyFloors[5][0][0] = (int)round(floors[15].min_x);
-    keyFloors[5][0][1] = (int)round(floors[15].min_z);
-    keyFloors[5][1][0] = (int)round(floors[15].min_x);
-    keyFloors[5][1][1] = (int)round(floors[15].max_z);
-    keyFloors[5][2][0] = (int)round(floors[15].max_x);
-    keyFloors[5][2][1] = (int)round(floors[15].min_z);
-    keyFloors[5][3][0] = (int)round(floors[15].max_x);
-    keyFloors[5][3][1] = (int)round(floors[15].max_z);
-    keyFloors[6][0][0] = (int)round(floors[10].min_x);
-    keyFloors[6][0][1] = (int)round(floors[8].min_z);
-    keyFloors[6][1][0] = (int)round(floors[10].min_x);
-    keyFloors[6][1][1] = (int)round(floors[13].max_z);
-    keyFloors[6][2][0] = (int)round(floors[8].max_x);
-    keyFloors[6][2][1] = (int)round(floors[8].min_z);
-    keyFloors[6][3][0] = (int)round(floors[8].max_x);
-    keyFloors[6][3][1] = (int)round(floors[13].max_z);
-    
-    keyCenter[0][0] = (int)round(0.5f * floors[21].min_x + 0.5f * floors[21].max_x);
-    keyCenter[0][1] = (int)round(0.5f * floors[21].min_z + 0.5f * floors[21].max_z);
-    keyCenter[1][0] = (int)round(0.5f * floors[26].min_x + 0.5f * floors[26].max_x);
-    keyCenter[1][1] = (int)round(0.5f * floors[26].min_z + 0.5f * floors[26].max_z);
-    keyCenter[2][0] = (int)round(0.5f * floors[23].min_x + 0.5f * floors[23].max_x);
-    keyCenter[2][1] = (int)round(0.5f * floors[23].min_z + 0.5f * floors[23].max_z);
-    keyCenter[3][0] = (int)round(0.5f * floors[29].min_x + 0.5f * floors[29].max_x);
-    keyCenter[3][1] = (int)round(0.5f * floors[29].min_z + 0.5f * floors[29].max_z);
-    keyCenter[4][0] = (int)round(0.5f * floors[19].min_x + 0.5f * floors[19].max_x);
-    keyCenter[4][1] = (int)round(0.5f * floors[19].min_z + 0.5f * floors[19].max_z);
-    keyCenter[5][0] = (int)round(0.5f * floors[15].min_x + 0.5f * floors[15].max_x);
-    keyCenter[5][1] = (int)round(0.5f * floors[15].min_z + 0.5f * floors[15].max_z);
-    keyCenter[6][0] = (int)round(0.5f * floors[10].min_x + 0.5f * floors[8].max_x);
-    keyCenter[6][1] = (int)round(0.5f * floors[8].min_z  + 0.5f * floors[13].max_z);
-    
-    thatNearOneConstant = floors[30].normal[1];
-}
-
+// Output Printing
+int totalHits11, totalHits12, totalHits13, totalHits14 = 0;
 
 void init_attainable_arctans() {
     for (int t = 0; t < 8192; t++) {
@@ -311,9 +232,6 @@ bool move14(AllData data, AllData* dataPoint) {
     int dist13 = fmin(fix((direction - (16 * 16)) - (direction + (16 * 16))), fix((direction + (16 * 16)) - (direction - (16 * 16))));
     for (int t = 0; t < 8192; t++) {
         
-        if (!attainableArctans[t]) {
-            continue;
-        }
         int fangle = fix(gArctanTable[t] + camYaw);
         
         int dist23 = fmin(fix(fangle - (direction - (16 * 16))), fix((direction - (16 * 16)) - fangle));
@@ -389,6 +307,7 @@ bool move14(AllData data, AllData* dataPoint) {
             }
             // log data
             printf("ROUTE FOUND\n");
+            totalHits14++;
             (dataPoint->velocities).vel14 = speed;
             (dataPoint->velocities).poleVelX = airmove.endSpeed * gSineTable[lastslide.endFacingAngle >> 4];
             (dataPoint->velocities).poleVelZ = airmove.endSpeed * gCosineTable[lastslide.endFacingAngle >> 4];
@@ -415,10 +334,6 @@ bool move13(AllData data, AllData* dataPoint) {
     destination[2] = keyCenter[data.targets.platKey][1] + data.targets.inPUZ * 65536.0f;
     // direction is a good approximation of what your facing angle should be.
     int direction = atan2s(data.positions.pos13[2] - destination[2], data.positions.pos13[0] - destination[0]);
-    // fetch the slope data to accelerate crouchslide computation.
-    Surface* startFloor;
-    float startheight;
-    int floorIdx = find_floor(data.positions.pos13, &startFloor, startheight, floors, total_floors);
     // circle black magic for which AU to check.
     int dist13 = fmin(fix((direction - (32 * 16)) - (direction + (32 * 16))), fix((direction + (32 * 16)) - (direction - (32 * 16))));
     for (int t = 0; t < 8192; t++) {
@@ -516,6 +431,7 @@ bool move13(AllData data, AllData* dataPoint) {
                 (dataPoint->angles).cam13 = camYaw;
                 (dataPoint->waits).waiting13 = wf;
                 printf("t");
+                totalHits13++;
                 if(move14(*dataPoint, dataPoint)) {
                     return true;
                 }
@@ -529,10 +445,6 @@ bool move12(AllData data, AllData* dataPoint) {
     float lb = 0.9f;
     float ub = 0.94f;
     int camYaw = fix(crude_camera_yaw(data.positions.pos12, data.positions.posCam1));
-    // cache the slope data of where we're starting so we don't have to recompute it in all crouchslides.
-    Surface* startFloor;
-    float startheight;
-    int floorIdx = find_floor(data.positions.pos12, &startFloor, startheight, floors, total_floors);
     // the below for loop is because basically, the PU's that have a shot at the main universe are in the overlap of two donuts
     // the donut of PU's we can reach, and the donut of PU's that can 1fcs to the main universe within our speed band.
     // so we've got two "islands" of PU's we're iterating over.
@@ -645,6 +557,7 @@ bool move12(AllData data, AllData* dataPoint) {
                     (dataPoint->angles).cam12 = camYaw;
                     (dataPoint->waits).waiting12 = wf;
                     printf("s");
+                    totalHits12++;
                     if(move13(*dataPoint, dataPoint)) {
                         return true;
                     }
@@ -662,10 +575,6 @@ bool move11(AllData data, AllData* dataPoint) {
     // keeping track of how many hits we have for our first motion is useful for partially running a computation
     // logging where you were, and skipping ahead.
     int camYaw = fix(crude_camera_yaw(data.positions.pos11, data.positions.posCam1));
-    // fetch the slope data from the floor so we don't have to endlessly recompute that shit.
-    Surface* startFloor;
-    float startheight;
-    int floorIdx = find_floor(data.positions.pos11, &startFloor, startheight, floors, total_floors);
     // iterate over AU's
     for (int t = 0; t < 8192; t++) {
 
@@ -765,6 +674,7 @@ bool move11(AllData data, AllData* dataPoint) {
                 }
                 // log data, continue.
                 printf("f(%d,%d)\n", counter, fangle);
+                totalHits11++;
                 (dataPoint->positions).pos12[0] = airmove.endPos[0];
                 (dataPoint->positions).pos12[1] = airmove.endPos[1];
                 (dataPoint->positions).pos12[2] = airmove.endPos[2];
@@ -803,13 +713,13 @@ int main(int argc, char* argv[]) {
     polePosition[2] = 266.0f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = -5700.0f - (65536.0f * 29.0f);
+    firstPosition[0] = 5700.0f - (65536.0f * 29.0f);
     firstPosition[1] = -2917.0f;
     firstPosition[2] = 266.0f;
     // changeable
     float firstSpeed = -5981800.0f;
     // changeable
-    int targetPlat = 6;
+    int targetPlat = 0;
     int targetPUX = 75;
     int targetPUZ = -30;
     // for best results, pick 2 speed closer to 0 than the first output you got from the pole thing
@@ -917,7 +827,7 @@ int main(int argc, char* argv[]) {
     data.targets.speed = targetSpeed;
     data.targets.hau = targetHAU;
     data.velocities.vel11 = firstSpeed;
-    
+       
 
     std::ofstream wf(outFile);
     wf << std::fixed;
@@ -962,6 +872,10 @@ int main(int argc, char* argv[]) {
     }
     else {
         printf("FAILURE");
+        printf("Total Stage 1 Hits: %d\n", totalHits11);
+        printf("Total Stage 2 Hits: %d\n", totalHits12);
+        printf("Total Stage 3 Hits: %d\n", totalHits13);
+        printf("Total Stage 4 Hits: %d\n", totalHits14);
         return 0;
     }
 }

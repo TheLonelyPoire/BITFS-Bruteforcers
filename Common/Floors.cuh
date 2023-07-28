@@ -11,9 +11,15 @@ namespace BITFS {
     extern __device__ Surface floorsG[total_floors];
     extern Surface floors[total_floors];
 
+    extern int keyFloors[7][4][2];
+    extern int keyCenter[7][2];
+    extern float thatNearOneConstant;
+
     __global__ void initialise_floorsG();
 
     void initialise_floors();
+
+    void initialise_keyFloors();
 
     __host__ __device__ int find_floor(float* position, Surface** floor, float& floor_y, Surface floor_set[], int n_floor_set);
 

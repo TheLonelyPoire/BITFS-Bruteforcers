@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "Floor.cuh"
+#include "Floors.cuh"
 #include "Surface.cuh"
 #include "Trig.cuh"
 

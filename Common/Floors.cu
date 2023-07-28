@@ -1,4 +1,4 @@
-#include "Floor.cuh"
+#include "Floors.cuh"
 #include "Trig.cuh"
 
 namespace BITFS {
@@ -6,6 +6,9 @@ namespace BITFS {
     __device__ Surface floorsG[total_floors];
     Surface floors[total_floors];
 
+    int keyFloors[7][4][2];
+    int keyCenter[7][2];
+    float thatNearOneConstant;
 
     __global__ void initialise_floorsG() {
         // I chopped down the number of relevant floors, fewer things to worry about here
@@ -124,6 +127,90 @@ namespace BITFS {
         floors[36] = Surface(-8191, -3071, 8192, 8192, -3071, -8191, -8191, -3071, -8191);
         floors[37] = Surface(-8191, -3071, 8192, 8192, -3071, 8192, 8192, -3071, -8191);
         // lava
+    }
+
+
+    void initialise_keyFloors() {
+        // 0 is the starting slope down
+        keyFloors[0][0][0] = (int)round(floors[21].min_x);
+        keyFloors[0][0][1] = (int)round(floors[21].min_z);
+        keyFloors[0][1][0] = (int)round(floors[21].min_x);
+        keyFloors[0][1][1] = (int)round(floors[21].max_z);
+        keyFloors[0][2][0] = (int)round(floors[21].max_x);
+        keyFloors[0][2][1] = (int)round(floors[21].min_z);
+        keyFloors[0][3][0] = (int)round(floors[21].max_x);
+        keyFloors[0][3][1] = (int)round(floors[21].max_z);
+        // 1 is the lowest rectangle in the starting region
+        keyFloors[1][0][0] = (int)round(floors[26].min_x);
+        keyFloors[1][0][1] = (int)round(floors[26].min_z);
+        keyFloors[1][1][0] = (int)round(floors[26].min_x);
+        keyFloors[1][1][1] = (int)round(floors[26].max_z);
+        keyFloors[1][2][0] = (int)round(floors[26].max_x);
+        keyFloors[1][2][1] = (int)round(floors[26].min_z);
+        keyFloors[1][3][0] = (int)round(floors[26].max_x);
+        keyFloors[1][3][1] = (int)round(floors[26].max_z);
+        // 2 is the center rectangle. Kinda shitty choice bc hard to hit.
+        keyFloors[2][0][0] = (int)round(floors[23].min_x);
+        keyFloors[2][0][1] = (int)round(floors[23].min_z);
+        keyFloors[2][1][0] = (int)round(floors[23].min_x);
+        keyFloors[2][1][1] = (int)round(floors[23].max_z);
+        keyFloors[2][2][0] = (int)round(floors[23].max_x);
+        keyFloors[2][2][1] = (int)round(floors[23].min_z);
+        keyFloors[2][3][0] = (int)round(floors[23].max_x);
+        keyFloors[2][3][1] = (int)round(floors[23].max_z);
+        // 3 is the ramp down to the pole
+        keyFloors[3][0][0] = (int)round(floors[29].min_x);
+        keyFloors[3][0][1] = (int)round(floors[29].min_z);
+        keyFloors[3][1][0] = (int)round(floors[29].min_x);
+        keyFloors[3][1][1] = (int)round(floors[29].max_z);
+        keyFloors[3][2][0] = (int)round(floors[29].max_x);
+        keyFloors[3][2][1] = (int)round(floors[29].min_z);
+        keyFloors[3][3][0] = (int)round(floors[29].max_x);
+        keyFloors[3][3][1] = (int)round(floors[29].max_z);
+        // 4 is starting rectangle, kinda high
+        keyFloors[4][0][0] = (int)round(floors[19].min_x);
+        keyFloors[4][0][1] = (int)round(floors[19].min_z);
+        keyFloors[4][1][0] = (int)round(floors[19].min_x);
+        keyFloors[4][1][1] = (int)round(floors[19].max_z);
+        keyFloors[4][2][0] = (int)round(floors[19].max_x);
+        keyFloors[4][2][1] = (int)round(floors[19].min_z);
+        keyFloors[4][3][0] = (int)round(floors[19].max_x);
+        keyFloors[4][3][1] = (int)round(floors[19].max_z);
+        // 5 is the rectangle before the octagon
+        keyFloors[5][0][0] = (int)round(floors[15].min_x);
+        keyFloors[5][0][1] = (int)round(floors[15].min_z);
+        keyFloors[5][1][0] = (int)round(floors[15].min_x);
+        keyFloors[5][1][1] = (int)round(floors[15].max_z);
+        keyFloors[5][2][0] = (int)round(floors[15].max_x);
+        keyFloors[5][2][1] = (int)round(floors[15].min_z);
+        keyFloors[5][3][0] = (int)round(floors[15].max_x);
+        keyFloors[5][3][1] = (int)round(floors[15].max_z);
+        // 6 is the octagon, and the best one.
+        keyFloors[6][0][0] = (int)round(floors[10].min_x);
+        keyFloors[6][0][1] = (int)round(floors[8].min_z);
+        keyFloors[6][1][0] = (int)round(floors[10].min_x);
+        keyFloors[6][1][1] = (int)round(floors[13].max_z);
+        keyFloors[6][2][0] = (int)round(floors[8].max_x);
+        keyFloors[6][2][1] = (int)round(floors[8].min_z);
+        keyFloors[6][3][0] = (int)round(floors[8].max_x);
+        keyFloors[6][3][1] = (int)round(floors[13].max_z);
+
+        keyCenter[0][0] = (int)round(0.5f * floors[21].min_x + 0.5f * floors[21].max_x);
+        keyCenter[0][1] = (int)round(0.5f * floors[21].min_z + 0.5f * floors[21].max_z);
+        keyCenter[1][0] = (int)round(0.5f * floors[26].min_x + 0.5f * floors[26].max_x);
+        keyCenter[1][1] = (int)round(0.5f * floors[26].min_z + 0.5f * floors[26].max_z);
+        keyCenter[2][0] = (int)round(0.5f * floors[23].min_x + 0.5f * floors[23].max_x);
+        keyCenter[2][1] = (int)round(0.5f * floors[23].min_z + 0.5f * floors[23].max_z);
+        keyCenter[3][0] = (int)round(0.5f * floors[29].min_x + 0.5f * floors[29].max_x);
+        keyCenter[3][1] = (int)round(0.5f * floors[29].min_z + 0.5f * floors[29].max_z);
+        keyCenter[4][0] = (int)round(0.5f * floors[19].min_x + 0.5f * floors[19].max_x);
+        keyCenter[4][1] = (int)round(0.5f * floors[19].min_z + 0.5f * floors[19].max_z);
+        keyCenter[5][0] = (int)round(0.5f * floors[15].min_x + 0.5f * floors[15].max_x);
+        keyCenter[5][1] = (int)round(0.5f * floors[15].min_z + 0.5f * floors[15].max_z);
+        keyCenter[6][0] = (int)round(0.5f * floors[10].min_x + 0.5f * floors[8].max_x);
+        keyCenter[6][1] = (int)round(0.5f * floors[8].min_z + 0.5f * floors[13].max_z);
+
+        thatNearOneConstant = floors[30].normal[1];
     }
 
 
