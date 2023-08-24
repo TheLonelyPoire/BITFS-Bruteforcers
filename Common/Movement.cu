@@ -138,7 +138,7 @@ namespace BITFS {
             return false;
         }
 
-        float normalY = usePolePlatform ? 0.99999994 : floor->normal[1];
+        float normalY = usePolePlatform ? 0.9999946356 : floor->normal[1];
         int slopeAngle = usePolePlatform ? 0 : atan2s(floor->normal[2], floor->normal[0]);
         slopeAngle = fix(slopeAngle);
         float steepness = usePolePlatform ? 0 : sqrtf(floor->normal[0] * floor->normal[0] + floor->normal[2] * floor->normal[2]);

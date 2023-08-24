@@ -17,4 +17,6 @@ namespace BITFS {
 
     __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, bool onPole = false);
 
+    __host__ __device__ int tenk_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueCameraFocus, float* truePan, bool onPole = false);
+
 }
