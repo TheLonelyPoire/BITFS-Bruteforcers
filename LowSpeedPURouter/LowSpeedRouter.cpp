@@ -45,6 +45,9 @@ bool second_tenk_compute(AllData data, AllData* dataPoint) {
     // and then we can check all of those guys.
     int maxCamYaw = 0;
     int minCamYaw = 65536;
+    float trueFocus[3];
+    float truePan[3];
+
     for (int t = -32768; t < 32768; t++) {
         int cyaw = fine_camera_yaw(data.positions.posPole, data.positions.posCam1, (short)t, true);
         // -8192 is a guess.

@@ -9,6 +9,7 @@
 #include <ostream>
 #include <iomanip>
 #include <cstdlib>
+#include <unordered_set>
 
 #include "../Common/CommonBruteforcerStructs.hpp"
 #include "../Common/Camera.cuh"
@@ -27,7 +28,7 @@ StrainInfo tableOfStrains[tableOfStrainsSize];
 
 int16_t a = 0;
 
-bool fine_check(AllData* dataPoint) {
+bool fine_check(AllData* dataPoint, float* trueFocus, float* truePan) {
     float fvelocity = (float)dataPoint->targets.speed;
     // step 1: find the vX and vZ from your speed and hau you approached the pole with.
     float vX = fvelocity * gSineTable[dataPoint->targets.hau];
@@ -186,15 +187,8 @@ bool fine_check(AllData* dataPoint) {
     if (!on_one_up(crudePoleAir.endPos)) {
         return false;
     }
-    // ok, so if the prototype makes it to the 1-up, it's possible to start iterating over stick positions now.
-    float cameraFocus[3];
-    cameraFocus[0] = 0.8f * poleslide.endPos[0] + 0.2f * dataPoint->positions.posPole[0];
-    cameraFocus[1] = 0.3f * poleslide.endPos[1] + 0.7f * dataPoint->positions.posPole[1];
-    cameraFocus[2] = 0.8f * poleslide.endPos[2] + 0.2f * dataPoint->positions.posPole[2];
-    // note: the bottom line might be slightly inaccurate because of like, having to correct the cam pan
-    // since it was facing the wrong way on the pole. Modulo those inaccuracies, you *should* be far enough away
-    // that those corrections don't matter.
-    int cameraYawTen = fix(crude_camera_yaw(cameraFocus, dataPoint->positions.posCam1));
+
+    short cameraYawTen = fix(tenk_camera_yaw(poleslide.endPos, dataPoint->positions.posCam1, poleslide.endFacingAngle, trueFocus, truePan, false));
     // iterate over stick positions for the 10k.
     FancySlideInfo crudeTenkslide;
     for (int j = 0; j < 20129; j++) {
@@ -297,6 +291,11 @@ bool fine_check(AllData* dataPoint) {
 }
 
 bool med_check(AllData* dataPoint) {
+    std::unordered_set<int> camera_yaws;
+
+    float trueFocus[3];
+    float truePan[3];
+
     // we were previously testing every 100 speeds, but now we can drop down to every 10 speeds.
     for (int deltaV = -5; deltaV <= 4; deltaV++) {
         int velocity = dataPoint->targets.speed + deltaV * 10;
@@ -305,21 +304,22 @@ bool med_check(AllData* dataPoint) {
         // warning, when jongyon was testing empirically, he was getting different ranges of camera yaws.
         int maxCamYaw = 0;
         int minCamYaw = 65536;
+
         for (int t = -32768; t < 32768; t++) {
-            int cyaw = fine_camera_yaw(dataPoint->positions.posPole, dataPoint->positions.posCam1, (short)t);
-            if (fix(cyaw) > maxCamYaw) {
-                maxCamYaw = fix(cyaw);
-            }
-            if (fix(cyaw) < minCamYaw) {
-                minCamYaw = fix(cyaw);
-            }
-        }
-        // ok, max and min camera yaws are found. Next is to iterate through them and, very importantly, CHECK
-        // whether it's a viable camera yaw that could possibly be attained.
-        for (int poleCamera = minCamYaw; poleCamera <= maxCamYaw; poleCamera++) {
-            if (!validCameraAngles[poleCamera]) {
+            int cyaw = fix(fine_camera_yaw(dataPoint->positions.posPole, dataPoint->positions.posCam1, (short)t, trueFocus, truePan, true));
+
+            // Skip duplicate camera yaws
+            if (camera_yaws.count(cyaw) > 0) {
                 continue;
             }
+
+            // Add camera yaw to list of previously found yaws
+            camera_yaws.insert(cyaw);
+
+            if (!validCameraAngles[cyaw]) {
+                continue;
+            }
+
             // alright, we know the velocity and the angle we came from, so we know our stored sliding speed.
             float vX = (float)velocity * gSineTable[dataPoint->targets.hau];
             float vZ = (float)velocity * gCosineTable[dataPoint->targets.hau];
@@ -327,7 +327,7 @@ bool med_check(AllData* dataPoint) {
             for (int i = 0; i < 20129; i++) {
                 // precisely simulate the crouchslide, along with the 8 magnitude walk thing.
                 FancySlideInfo poleslide;
-                if (!sim_slide(stickTab[i], dataPoint->positions.posPole, fminf((stickTab[i].magnitude / 64.0f) * (stickTab[i].magnitude / 64.0f) * 32.0f, 8.0f), vX, vZ, stickTab[i].angle + poleCamera, dataPoint->targets.storedAngle, poleCamera, true, poleslide)) {
+                if (!sim_slide(stickTab[i], dataPoint->positions.posPole, fminf((stickTab[i].magnitude / 64.0f) * (stickTab[i].magnitude / 64.0f) * 32.0f, 8.0f), vX, vZ, stickTab[i].angle + cyaw, dataPoint->targets.storedAngle, cyaw, true, poleslide)) {
                     continue;
                 }
                 // we must be going forward to 10k later.
@@ -370,9 +370,9 @@ bool med_check(AllData* dataPoint) {
                 for (int epsilonV = -5; epsilonV <= 4; epsilonV++) {
                     (dataPoint->targets).speed = velocity + epsilonV;
                     (dataPoint->targets).i = i;
-                    (dataPoint->targets).cam = poleCamera;
+                    (dataPoint->targets).cam = cyaw;
                     // and do the full fine check.
-                    if(fine_check(dataPoint)) {
+                    if(fine_check(dataPoint, trueFocus, truePan)) {
                         return true;
                     }
                 }
@@ -498,8 +498,9 @@ int main(int argc, char* argv[]) {
     polePosition[0] = 6605.0f;
     polePosition[1] = -2970.0f;
     polePosition[2] = 266.0f;
-    int highSpeed = 4300000;
-    int lowSpeed = 3800000;
+    int highSpeed = 4232700;
+    int lowSpeed = 4232600;
+    
     unsigned int numMaxSolutions = 100;
        
     std::string outFile = "outData.csv";

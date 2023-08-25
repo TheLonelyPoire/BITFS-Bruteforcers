@@ -38,7 +38,7 @@ namespace BITFS {
     }
 
 
-    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, bool onPole) {
+    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueFocus, float* truePan, bool onPole) {
 
         // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
         float* cosineTable, * sineTable;
@@ -157,6 +157,10 @@ namespace BITFS {
         temp[1] = pan[1];
         temp[2] = pan[2];
 
+        truePan[0] = temp[0];
+        truePan[1] = temp[1];
+        truePan[2] = temp[2];
+
         pan[0] = temp[2] * sineTable[fix((int)cameraYaw) >> 4] + temp[0] * cosineTable[fix((int)cameraYaw) >> 4];
         pan[2] = temp[2] * cosineTable[fix((int)cameraYaw) >> 4] - temp[0] * sineTable[fix((int)cameraYaw) >> 4];
 
@@ -183,11 +187,15 @@ namespace BITFS {
         cameraFocus[1] = lakituPosition[1] + cameraDist * sineTable[fix((int)cameraPitch) >> 4];
         cameraFocus[2] = lakituPosition[2] + cameraDist * cosineTable[fix((int)cameraPitch) >> 4] * cosineTable[fix((int)cameraYaw) >> 4];
 
+        trueFocus[0] = cameraFocus[0];
+        trueFocus[1] = cameraFocus[1];
+        trueFocus[2] = cameraFocus[2];
+
         return atan2s(lakituPosition[2] - cameraFocus[2], lakituPosition[0] - cameraFocus[0]);
     }
 
 
-    __host__ __device__ int tenk_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueCameraFocus, float* truePan, bool onPole) {
+    __host__ __device__ int tenk_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueFocus, float* truePan, bool onPole) {
         
         // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
         float* cosineTable, * sineTable;
@@ -335,12 +343,12 @@ namespace BITFS {
         cameraFocus[0] = lakituPosition[0] + cameraDist * cosineTable[fix((int)cameraPitch) >> 4] * sineTable[fix((int)cameraYaw) >> 4];
         cameraFocus[1] = lakituPosition[1] + cameraDist * sineTable[fix((int)cameraPitch) >> 4];
         cameraFocus[2] = lakituPosition[2] + cameraDist * cosineTable[fix((int)cameraPitch) >> 4] * cosineTable[fix((int)cameraYaw) >> 4];
+ 
+        trueFocus[0] = trueFocus[0] + 0.8f * (cameraFocus[0] - trueFocus[0]);
+        trueFocus[1] = trueFocus[1] + 0.3f * (cameraFocus[1] - trueFocus[1]);
+        trueFocus[2] = trueFocus[2] + 0.8f * (cameraFocus[2] - trueFocus[2]);
 
-        trueCameraFocus[0] = trueCameraFocus[0] + 0.8f * (cameraFocus[0] - trueCameraFocus[0]);
-        trueCameraFocus[1] = trueCameraFocus[1] + 0.3f * (cameraFocus[1] - trueCameraFocus[1]);
-        trueCameraFocus[2] = trueCameraFocus[2] + 0.8f * (cameraFocus[2] - trueCameraFocus[2]);
-
-        return atan2s(lakituPosition[2] - trueCameraFocus[2], lakituPosition[0] - trueCameraFocus[0]);
+        return atan2s(lakituPosition[2] - trueFocus[2], lakituPosition[0] - trueFocus[0]);
     }
 
 }

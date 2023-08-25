@@ -1,7 +1,7 @@
 #pragma once
 
 namespace BITFS {
-    
+
     struct StrainInfo {
         int index;
         float speed;
@@ -61,4 +61,5 @@ namespace BITFS {
         AngleLog angles;
         TargetLog targets;
     };
+
 }
