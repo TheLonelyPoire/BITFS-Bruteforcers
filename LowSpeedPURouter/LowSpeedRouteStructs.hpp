@@ -10,9 +10,6 @@ namespace BITFS {
         float pos13[3];
         float pos14[3];
         float posPole[3];
-        float posTenK2Air[3];
-        float posTenK2[3];
-        float pos21[3];
     };
 
     struct VelocityLog {
@@ -23,10 +20,6 @@ namespace BITFS {
         float vel14;
         float poleVelX;
         float poleVelZ;
-        float velTenK2X;
-        float velTenK2Z;
-        float velTenK2;
-        float vel21;
     };
 
     struct StickLog {
@@ -38,12 +31,6 @@ namespace BITFS {
         int stick13Y;
         int stick14X;
         int stick14Y;
-        int stickPoleX;
-        int stickPoleY;
-        int stickStrainX;
-        int stickStrainY;
-        int stickTenK2X;
-        int stickTenK2Y;
     };
 
     struct AngleLog {
@@ -56,10 +43,6 @@ namespace BITFS {
         int cam14;
         int facing14;
         int slidePole;
-        int camPole;
-        int camTenK2;
-        int facingTenK2;
-        int slideTenK2;
     };
 
     struct WaitingLog {

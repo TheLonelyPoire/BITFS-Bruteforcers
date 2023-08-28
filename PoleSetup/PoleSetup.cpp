@@ -28,7 +28,7 @@ StrainInfo tableOfStrains[tableOfStrainsSize];
 
 int16_t a = 0;
 
-bool fine_check(AllData* dataPoint, float* trueFocus, float* truePan) {
+bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float* camPos) {
     float fvelocity = (float)dataPoint->targets.speed;
     // step 1: find the vX and vZ from your speed and hau you approached the pole with.
     float vX = fvelocity * gSineTable[dataPoint->targets.hau];
@@ -188,7 +188,7 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float* truePan) {
         return false;
     }
 
-    short cameraYawTen = fix(tenk_camera_yaw(poleslide.endPos, dataPoint->positions.posCam1, poleslide.endFacingAngle, trueFocus, truePan, false));
+    short cameraYawTen = fix(tenk_camera_yaw(dataPoint->positions.posPole, poleslide.endPos, dataPoint->positions.posCam1, stickTab[dataPoint->targets.i].angle + dataPoint->targets.cam, poleslide.endFacingAngle, trueFocus, &sPanDistance, camPos));
     // iterate over stick positions for the 10k.
     FancySlideInfo crudeTenkslide;
     for (int j = 0; j < 20129; j++) {
@@ -294,7 +294,8 @@ bool med_check(AllData* dataPoint) {
     std::unordered_set<int> camera_yaws;
 
     float trueFocus[3];
-    float truePan[3];
+    float sPanDistance;
+    float camPos[3];
 
     // we were previously testing every 100 speeds, but now we can drop down to every 10 speeds.
     for (int deltaV = -5; deltaV <= 4; deltaV++) {
@@ -306,7 +307,7 @@ bool med_check(AllData* dataPoint) {
         int minCamYaw = 65536;
 
         for (int t = -32768; t < 32768; t++) {
-            int cyaw = fix(fine_camera_yaw(dataPoint->positions.posPole, dataPoint->positions.posCam1, (short)t, trueFocus, truePan, true));
+            int cyaw = fix(fine_camera_yaw(dataPoint->positions.posPole, dataPoint->positions.posCam1, (short)t, trueFocus, &sPanDistance, camPos, true));
 
             // Skip duplicate camera yaws
             if (camera_yaws.count(cyaw) > 0) {
@@ -372,7 +373,7 @@ bool med_check(AllData* dataPoint) {
                     (dataPoint->targets).i = i;
                     (dataPoint->targets).cam = cyaw;
                     // and do the full fine check.
-                    if(fine_check(dataPoint, trueFocus, truePan)) {
+                    if(fine_check(dataPoint, trueFocus, sPanDistance, camPos)) {
                         return true;
                     }
                 }

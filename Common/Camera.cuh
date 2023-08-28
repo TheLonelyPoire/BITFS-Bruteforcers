@@ -15,8 +15,8 @@ namespace BITFS {
     // accurate at PU distances!
     __host__ __device__ int crude_camera_yaw(float* currentPosition, float* lakituPosition);
 
-    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueFocus, float* truePan, bool onPole = false);
+    __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* focus, float* sPanDistance, float* camPos, bool onPole = false);
 
-    __host__ __device__ int tenk_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* trueFocus, float* truePan, bool onPole = false);
+    __host__ __device__ int tenk_camera_yaw(float* twoAgoPosition, float* oneAgoPosition, float* lakituPosition, short twoAgoFaceAngle, short oneAgoFaceAngle, float* oldFocus, float* oldPan, float* oldCamPos);
 
 }
