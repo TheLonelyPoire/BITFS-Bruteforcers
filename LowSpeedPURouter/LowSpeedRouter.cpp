@@ -533,7 +533,7 @@ bool move11(AllData* dataPoint) {
                 (dataPoint->donuts) = glazed;
                 counter++;
                 // fuck with the counter to continue with partially terminated computations.
-                if(counter > -1) {
+                if(counter > 420) {
                     if(move12(dataPoint, fineslide.endFacingAngle)) {
                         return true;
                     }
@@ -564,7 +564,7 @@ int main(int argc, char* argv[]) {
     // changeable
     float firstSpeed = -5981800.0f;
     // changeable
-    int targetPlat = 0;
+    int targetPlat = 6;
     int targetPUX = 75;
     int targetPUZ = -30;
     // for best results, pick 2 speed closer to 0 than the first output you got from the pole thing
