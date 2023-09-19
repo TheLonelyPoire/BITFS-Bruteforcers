@@ -78,6 +78,8 @@ namespace BITFS {
     struct TargetLog {
         float minSpeed;
         float posBully[3];
+        float bullySpeed;
+        short bullyMovingYaw;
         float posCam[3];
     };
 

@@ -92,7 +92,7 @@ __global__ void table_builder(int index2, TargetLog target) {
 }
 
 
-__device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int facingAngle, float marioVel) {
+__device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int facingAngle, int bullyMovingAngle, float marioVel, float bullySpeed) {
 
     float offsetX = marioPos[0] - bullyPos[0];
     float offsetZ = marioPos[2] - bullyPos[2];
@@ -108,6 +108,8 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
         pushAngle = fix(atan2s(offsetZ, offsetX));
     }
 
+    int bullyOldYaw = fix(bullyMovingAngle);
+
     float newMarioX = bullyPos[0] + 115.0f * gSineTableG[pushAngle >> 4];
     float newMarioZ = bullyPos[2] + 115.0f * gCosineTableG[pushAngle >> 4];
 
@@ -120,13 +122,17 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
     float rx = bullyPos[0] - newMarioX;
     float rz = bullyPos[2] - newMarioZ;
 
+    float bullyVelX = bullySpeed * gSineTableG[bullyOldYaw >> 4];
+    float bullyVelZ = bullySpeed * gCosineTableG[bullyOldYaw >> 4];
+
     float projectedV1 = (rx * marioVelX + rz * marioVelZ) / (rx * rx + rz * rz);
+    float projectedV2 = (-rx * bullyVelX - rz * bullyVelZ) / (rx * rx + rz * rz);
 
-    float velX = (53.0f / 73.0f) * projectedV1 * rx;
-    float velZ = (53.0f / 73.0f) * projectedV1 * rz;
+    bullyVelX += (53.0f / 73.0f) * projectedV1 * rx - projectedV2 * -rx;
+    bullyVelZ += (53.0f / 73.0f) * projectedV1 * rz - projectedV2 * -rz;
 
-    int bullyYaw = fix(atan2s(velZ, velX));
-    float bullyVel = sqrtf(velX * velX + velZ * velZ);
+    int bullyYaw = fix(atan2s(bullyVelZ, bullyVelX));
+    float bullyVel = sqrtf(bullyVelX * bullyVelX + bullyVelZ * bullyVelZ);
 
     struct BullyData solution;
     solution.posBully[0] = bullyPos[0];
@@ -213,7 +219,7 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
 
         // then, with this info, we simulate the bully impact.
 
-        BullyData collide = sim_bully_collision(lastslide.endPos, target.posBully, lastslide.endFacingAngle, lastslide.endSpeed);
+        BullyData collide = sim_bully_collision(lastslide.endPos, target.posBully, lastslide.endFacingAngle, target.bullyMovingYaw, lastslide.endSpeed, target.bullySpeed);
 
         finalSolutionsLog[nSolutions + i].bully.posBully[0] = collide.posBully[0];
         finalSolutionsLog[nSolutions + i].bully.posBully[1] = collide.posBully[1];
@@ -492,7 +498,7 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
     }
     
     FancySlideInfo firstslide;
-    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, true, firstslide)) {
+    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, firstslide)) {
         return;
     }
 
@@ -631,6 +637,8 @@ int main(int argc, char* argv[]) {
     target.posBully[0] = -1700.0f;
     target.posBully[1] = -2800.0f;
     target.posBully[2] = -350.0f;
+    target.bullySpeed = 30000;
+    target.bullyMovingYaw = 46904;
     target.posCam[0] = cameraPosition[0];
     target.posCam[1] = cameraPosition[1];
     target.posCam[2] = cameraPosition[2];
@@ -691,7 +699,7 @@ int main(int argc, char* argv[]) {
     std::cout << "\tStick X, Y: " << firstSlidesCPU[0].stickX << ", " << firstSlidesCPU[0].stickY << "\n";
     std::cout << "\tWaiting Frames: " << firstSlidesCPU[0].waitingFrames << std::endl;*/
 
-    for (int i = 0; i < 100/* nFirstSlidesCPU */; i++) {
+    for (int i = 9; i < 20 /* nFirstSlidesCPU */; i++) {
         int hitCounter = 0;
 
         printf("id is %d\n", i);
