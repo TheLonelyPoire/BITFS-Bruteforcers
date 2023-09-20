@@ -164,7 +164,7 @@ void move23(AllData* dataPoint) {
             float camPos[3];
             float focus[3];
             float sPanDistance;
-            camYaw = fine_camera_yaw(airmove.endPos, dataPoint->positions.posCam1, fineslide.endFacingAngle, focus, &sPanDistance, camPos, false);
+            fine_camera_yaw(airmove.endPos, dataPoint->positions.posCam1, fineslide.endFacingAngle, focus, &sPanDistance, camPos, false);
             float newCamPosition[3];
             newCamPosition[0] = 0.985f * dataPoint->positions.posCam1[0] + 0.015f * camPos[0];
             newCamPosition[1] = 0.985f * dataPoint->positions.posCam1[1] + 0.015f * camPos[1];
@@ -184,7 +184,7 @@ void move23(AllData* dataPoint) {
             }
 
             // log data if the solution is the fastest solution seen so far.
-            if (airmove.endSpeed > best_solution.velocities.vel24 || !foundSolution /* This second condition is probably unecessary.*/) {
+            if (abs(airmove.endSpeed) > abs(best_solution.velocities.vel24) || !foundSolution /* This second condition is probably unecessary.*/) {
                 dataPoint->positions.pos24[0] = airmove.endPos[0];
                 dataPoint->positions.pos24[1] = airmove.endPos[1];
                 dataPoint->positions.pos24[2] = airmove.endPos[2];
