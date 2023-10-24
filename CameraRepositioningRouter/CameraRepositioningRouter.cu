@@ -330,7 +330,6 @@ void move21(AllData* dataPoint) {
     int camYaw = fix(crude_camera_yaw(dataPoint->positions.pos21, dataPoint->positions.posCam1));
     // iterate over AU's
     for (int t = 0; t < 8192; t++) {
-
         // can we do that AU?
         if (!attainableArctans[t]) {
             continue;
@@ -419,11 +418,11 @@ void move21(AllData* dataPoint) {
             (dataPoint->angles).facing21 = fangle;
             (dataPoint->angles).cam21 = camYaw;
             (dataPoint->donuts) = chocolate;
-            counter++;
             // fuck with the counter to continue with partially terminated computations.
-            if (counter > -1) {
+            if (counter == 19) {
                 move22(dataPoint);
             }
+            counter++;
         }
     }
     // return false;
