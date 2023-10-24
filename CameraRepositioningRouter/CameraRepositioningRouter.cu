@@ -419,7 +419,7 @@ void move21(AllData* dataPoint) {
             (dataPoint->angles).cam21 = camYaw;
             (dataPoint->donuts) = chocolate;
             // fuck with the counter to continue with partially terminated computations.
-            if (counter == 19) {
+            if (counter > -1) {
                 move22(dataPoint);
             }
             counter++;
