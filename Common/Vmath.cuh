@@ -18,4 +18,6 @@ namespace BITFS {
 
 	__host__ __device__ float intervalClip(float low, float hi, float value);
 
+	__host__ __device__ void vec3f_set_dist_and_angle(float* from, float* to, float dist, unsigned short pitch, unsigned short yaw);
+
 }

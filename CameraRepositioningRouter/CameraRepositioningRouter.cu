@@ -30,8 +30,12 @@ bool attainableArctans[8192];
 // Output Printing
 int totalHits21, totalHits22, totalHits23 = 0;
 
+// Solution counter
+int counter = 0;
+
 // Highest Speed Solution
 AllData best_solution;
+int best_solution_counter = 0;
 bool foundSolution = false;
 
 void init_attainable_arctans() {
@@ -200,6 +204,7 @@ void move23(AllData* dataPoint) {
                 best_solution = AllData(*dataPoint); // I think this copy constructor works
 
                 foundSolution = true;
+                best_solution_counter = counter;
 
                 printf("T");
             }
@@ -324,7 +329,6 @@ void move22(AllData* dataPoint) {
 void move21(AllData* dataPoint) {
     float lb = 0.9f * 0.9f;
     float ub = 0.94f * 0.94f;
-    int counter = 0;
     // keeping track of how many hits we have for our first motion is useful for partially running a computation
     // logging where you were, and skipping ahead.
     int camYaw = fix(crude_camera_yaw(dataPoint->positions.pos21, dataPoint->positions.posCam1));
@@ -422,6 +426,7 @@ void move21(AllData* dataPoint) {
             if (counter > -1) {
                 move22(dataPoint);
             }
+
             counter++;
         }
     }
@@ -434,14 +439,14 @@ int main(int argc, char* argv[]) {
     float cameraPosition[3];
     cameraPosition[0] = -1700.0f;
     cameraPosition[1] = -2300.0f;
-    cameraPosition[2] = 1200.0f;
+    cameraPosition[2] = 500.0f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = -513743136.0f;
-    firstPosition[1] = -2866.0f;
-    firstPosition[2] = 917525.125f;
+    firstPosition[0] = 343413856.0f;
+    firstPosition[1] = -2916.003f;
+    firstPosition[2] = 372965888.0f;
     // changeable
-    float firstSpeed = -1531998976.0f;
+    float firstSpeed = -1509522432.0f;
     // changeable
 
     float point1[2];
@@ -592,6 +597,9 @@ int main(int argc, char* argv[]) {
         wf << best_solution.velocities.vel24 << ",";
         wf << best_solution.positions.posCam2[0] << "," << best_solution.positions.posCam2[1] << "," << best_solution.positions.posCam2[2] << std::endl;
         wf.close();
+
+        std::cout << "Best solution counter value: " << best_solution_counter << "\n";
+
         return 0;
     }
     else {

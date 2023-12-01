@@ -41,6 +41,32 @@ namespace BITFS {
     }
 
 
+    __host__ __device__ float sm64_sins(int angle) {
+        // Choose the appropriate trig tables/floor set depending on whether the function is called from the host or from the device
+        float* sineTable;
+        #if !defined(__CUDA_ARCH__)
+            sineTable = gSineTable;
+        #else
+            sineTable = gSineTableG;
+        #endif
+
+        return sineTable[(int)angle >> 4];
+    }
+
+
+    __host__ __device__ float sm64_coss(int angle) {
+        // Choose the appropriate trig tables/floor set depending on whether the function is called from the host or from the device
+        float* cosineTable;
+        #if !defined(__CUDA_ARCH__)
+            cosineTable = gCosineTable;
+        #else
+            cosineTable = gCosineTableG;
+        #endif
+
+        return cosineTable[angle >> 4];
+    }
+
+
     __host__ __device__ int16_t atan2_lookup(float z, float x) {
         
         // Choose the appropriate arctan table depending on whether the function is called from the host or from the device

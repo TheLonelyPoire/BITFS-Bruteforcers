@@ -564,7 +564,7 @@ int main(int argc, char* argv[]) {
     wf << "Into 10k Velocity, Post 10k Velocity, ";
     wf << "Pole Stick X, Pole Stick Y, Strain Stick X, Strain Stick Y, 10k Stick X, 10k Stick Y, ";
     wf << "Stored Slide Yaw, Pole Camera Yaw, 10k Camera Yaw, 10k Facing Angle, 10k Slide Yaw, ";
-    wf << "Platform ID, PU X, PU Z, Ingoing Speed, HAU Approach, " << std::endl;
+    wf << "Platform ID, PU X, PU Z, Ingoing Speed, HAU Approach, X Sliding Speed, Z Sliding Speed" << std::endl;
 
     AllData* data = (AllData*) std::malloc(sizeof(AllData) * numMaxSolutions);
 
@@ -616,7 +616,8 @@ int main(int argc, char* argv[]) {
             wf << data[i].velocities.velTenK2 << ", " << data[i].velocities.vel21 << ", ";
             wf << data[i].sticks.stickPoleX << ", " << data[i].sticks.stickPoleY << ", " << data[i].sticks.stickStrainX << ", " << data[i].sticks.stickStrainY << ", " << data[i].sticks.stickTenK2X << ", " << data[i].sticks.stickTenK2Y << ", ";
             wf << data[i].angles.slidePole << ", " << data[i].angles.camPole << ", " << data[i].angles.camTenK2 << ", " << data[i].angles.facingTenK2 << ", " << data[i].angles.slideTenK2 << ", ";
-            wf << data[i].targets.platKey << ", " << data[i].targets.inPUX << ", " << data[i].targets.inPUZ << ", " << data[i].targets.speed << ", " << data[i].targets.hau << std::endl;
+            wf << data[i].targets.platKey << ", " << data[i].targets.inPUX << ", " << data[i].targets.inPUZ << ", ";
+            wf << data[i].targets.speed << ", " << data[i].targets.hau << ", " << (float)data[i].targets.speed * gSineTable[data[i].targets.hau] << ", " << (float)data[i].targets.speed * gCosineTable[data[i].targets.hau] << std::endl;
         }
         wf.close();
         free(data);

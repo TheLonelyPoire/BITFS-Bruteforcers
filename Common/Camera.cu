@@ -3,6 +3,8 @@
 
 #include "Floors.cuh"
 #include "Surface.cuh"
+#include "Trig.cuh"
+#include "VMath.cuh"
 
 namespace BITFS {
 
@@ -43,26 +45,13 @@ namespace BITFS {
 
     __host__ __device__ int fine_camera_yaw(float* currentPosition, float* lakituPosition, short faceAngle, float* focus, float* sPanDistance, float* camPos, bool onPole) {
 
-        // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
-        float* cosineTable, * sineTable;
-#if !defined(__CUDA_ARCH__)
-        cosineTable = gCosineTable;
-        sineTable = gSineTable;
-#else
-        cosineTable = gCosineTableG;
-        sineTable = gSineTableG;
-#endif
+        float baseCameraDist = 1000.0;
+        unsigned short baseCameraPitch = 0x05B0;
+        unsigned short baseCameraYaw = -8192;
 
-        float baseCameraDist = 1400.0;
-        short baseCameraPitch = 0x05B0;
-        short baseCameraYaw = -8192;
+        float cameraPos[3]; 
 
-        baseCameraPitch = baseCameraPitch + 2304;
-
-        float cameraPos[3] = { currentPosition[0] + baseCameraDist * cosineTable[fix((int)baseCameraPitch) >> 4] * sineTable[fix((int)baseCameraYaw) >> 4],
-                            currentPosition[1] + 125.0f + baseCameraDist * sineTable[fix((int)baseCameraPitch) >> 4],
-                            currentPosition[2] + baseCameraDist * cosineTable[fix((int)baseCameraPitch) >> 4] * cosineTable[fix((int)baseCameraYaw) >> 4]
-        };
+        vec3f_set_dist_and_angle(currentPosition, cameraPos, baseCameraDist, baseCameraPitch, baseCameraYaw);
 
         camPos[0] = cameraPos[0];
         camPos[1] = cameraPos[1];
@@ -81,14 +70,14 @@ namespace BITFS {
         float cameraYaw = atan2s(dz, dx);
 
         // The camera will pan ahead up to about 30% of the camera's distance to Mario.
-        pan[2] = sineTable[0xC0] * cameraDist;
+        pan[2] = sm64_sins(0xC00) * cameraDist;
 
         temp[0] = pan[0];
         temp[1] = pan[1];
         temp[2] = pan[2];
 
-        pan[0] = temp[2] * sineTable[fix((int)faceAngle) >> 4] + temp[0] * cosineTable[fix((int)faceAngle) >> 4];
-        pan[2] = temp[2] * cosineTable[fix((int)faceAngle) >> 4] - temp[0] * sineTable[fix((int)faceAngle) >> 4];
+        pan[0] = temp[2] * sm64_sins(faceAngle) + temp[0] * sm64_coss(faceAngle);
+        pan[2] = temp[2] * sm64_coss(faceAngle) - temp[0] * sm64_sins(faceAngle);
 
         // rotate in the opposite direction
         cameraYaw = -cameraYaw;
@@ -97,8 +86,8 @@ namespace BITFS {
         temp[1] = pan[1];
         temp[2] = pan[2];
 
-        pan[0] = temp[2] * sineTable[fix((int)cameraYaw) >> 4] + temp[0] * cosineTable[fix((int)cameraYaw) >> 4];
-        pan[2] = temp[2] * cosineTable[fix((int)cameraYaw) >> 4] - temp[0] * sineTable[fix((int)cameraYaw) >> 4];
+        pan[0] = temp[2] * sm64_sins(faceAngle) + temp[0] * sm64_coss(faceAngle);
+        pan[2] = temp[2] * sm64_coss(faceAngle) - temp[0] * sm64_sins(faceAngle);
 
         // Only pan left or right
         pan[2] = 0.f;
@@ -111,8 +100,8 @@ namespace BITFS {
 
         sPanDistance[0] = temp[0];
 
-        pan[0] = temp[2] * sineTable[fix((int)cameraYaw) >> 4] + temp[0] * cosineTable[fix((int)cameraYaw) >> 4];
-        pan[2] = temp[2] * cosineTable[fix((int)cameraYaw) >> 4] - temp[0] * sineTable[fix((int)cameraYaw) >> 4];
+        pan[0] = temp[2] * sm64_sins(cameraYaw) + temp[0] * sm64_coss(cameraYaw);
+        pan[2] = temp[2] * sm64_coss(cameraYaw) - temp[0] * sm64_sins(cameraYaw);
 
         float cameraFocus[3] = { currentPosition[0] + pan[0], currentPosition[1] + 125.0f + pan[1], currentPosition[2] + pan[2] };
 
@@ -131,9 +120,7 @@ namespace BITFS {
             cameraPitch = -15872;
         }
 
-        cameraFocus[0] = lakituPosition[0] + cameraDist * cosineTable[fix((int)cameraPitch) >> 4] * sineTable[fix((int)cameraYaw) >> 4];
-        cameraFocus[1] = lakituPosition[1] + cameraDist * sineTable[fix((int)cameraPitch) >> 4];
-        cameraFocus[2] = lakituPosition[2] + cameraDist * cosineTable[fix((int)cameraPitch) >> 4] * cosineTable[fix((int)cameraYaw) >> 4];
+        vec3f_set_dist_and_angle(lakituPosition, cameraFocus, cameraDist, cameraPitch, cameraYaw);
 
         focus[0] = cameraFocus[0];
         focus[1] = cameraFocus[1];

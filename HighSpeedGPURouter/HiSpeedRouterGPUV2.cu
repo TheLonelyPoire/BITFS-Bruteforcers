@@ -634,9 +634,9 @@ int main(int argc, char* argv[]) {
 
     TargetLog target;
     target.minSpeed = targetSpeed;
-    target.posBully[0] = -1700.0f;
-    target.posBully[1] = -2800.0f;
-    target.posBully[2] = -350.0f;
+    target.posBully[0] = -3120.0f;
+    target.posBully[1] = -2976.0f;
+    target.posBully[2] = -896.0f;
     target.bullySpeed = 30000;
     target.bullyMovingYaw = 46904;
     target.posCam[0] = cameraPosition[0];

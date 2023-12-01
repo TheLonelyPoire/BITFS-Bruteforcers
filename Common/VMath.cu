@@ -1,6 +1,8 @@
 #include "Vmath.cuh"
 #include "math.h"
 
+#include "Trig.cuh"
+
 namespace BITFS {
 
 	__host__ __device__ float find_dis(float* firstPos, float* secondPos) {
@@ -30,5 +32,12 @@ namespace BITFS {
 	// this takes a float and clips it to the closest value within an interval.
 	__host__ __device__ float intervalClip(float low, float hi, float value) {
 		return fminf(hi, fmaxf(low, value));
+	}
+
+
+	__host__ __device__ void vec3f_set_dist_and_angle(float* from, float* to, float dist, unsigned short pitch, unsigned short yaw) {
+		to[0] = from[0] + dist * sm64_coss(pitch) * sm64_sins(yaw);
+		to[1] = from[1] + dist * sm64_sins(pitch);
+		to[2] = from[2] + dist * sm64_coss(pitch) * sm64_coss(yaw);
 	}
 }
