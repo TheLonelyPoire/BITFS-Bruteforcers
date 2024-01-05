@@ -33,6 +33,9 @@
     <ClInclude Include="..\Common\Surface.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\VMath.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="..\Common\Trig.cu">
@@ -53,5 +56,11 @@
     <CudaCompile Include="..\Common\Surface.cu">
       <Filter>Source</Filter>
     </CudaCompile>
+    <CudaCompile Include="..\Common\VMath.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="PoleSetup.cpp" />
   </ItemGroup>
 </Project>

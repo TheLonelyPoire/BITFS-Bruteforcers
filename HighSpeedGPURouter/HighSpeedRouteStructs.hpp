@@ -11,6 +11,7 @@ namespace BITFS {
         int stickX;
         int stickY;
         int waitingFrames;
+        /* TODO: REMOVE */ int index;
     };
 
     struct MotionData2 {
@@ -22,6 +23,7 @@ namespace BITFS {
         int stickY;
         int waitingFrames;
         DonutData donut;
+        /* TODO: REMOVE */ int index;
     };
 
     struct MotionData4 {
@@ -30,6 +32,7 @@ namespace BITFS {
         int facingAngle;
         int stickX;
         int stickY;
+        /*TODO: REMOVE */ int index;
     };
 
     struct PositionLog {

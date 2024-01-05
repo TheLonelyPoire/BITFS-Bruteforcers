@@ -110,20 +110,20 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
 
     int bullyOldYaw = fix(bullyMovingAngle);
 
-    float newMarioX = bullyPos[0] + 115.0f * gSineTableG[pushAngle >> 4];
-    float newMarioZ = bullyPos[2] + 115.0f * gCosineTableG[pushAngle >> 4];
+    float newMarioX = bullyPos[0] + 115.0f * sm64_sins(pushAngle);
+    float newMarioZ = bullyPos[2] + 115.0f * sm64_coss(pushAngle);
 
     float marioSpeed = -1.0f * marioVel;
     int marioYaw = fix(facingAngle + 0x8000);
 
-    float marioVelX = marioSpeed * gSineTableG[marioYaw >> 4];
-    float marioVelZ = marioSpeed * gCosineTableG[marioYaw >> 4];
+    float marioVelX = marioSpeed * sm64_sins(marioYaw);
+    float marioVelZ = marioSpeed * sm64_coss(marioYaw);
 
     float rx = bullyPos[0] - newMarioX;
     float rz = bullyPos[2] - newMarioZ;
 
-    float bullyVelX = bullySpeed * gSineTableG[bullyOldYaw >> 4];
-    float bullyVelZ = bullySpeed * gCosineTableG[bullyOldYaw >> 4];
+    float bullyVelX = bullySpeed * sm64_sins(bullyOldYaw);
+    float bullyVelZ = bullySpeed * sm64_coss(bullyOldYaw);
 
     float projectedV1 = (rx * marioVelX + rz * marioVelZ) / (rx * rx + rz * rz);
     float projectedV2 = (-rx * bullyVelX - rz * bullyVelZ) / (rx * rx + rz * rz);
@@ -263,9 +263,28 @@ __global__ void fourth_move(TargetLog target) {
         return;
     }
 
+    // TODO: REMOVE
+    if (idx == 2496 && nSolutions == 0)
+    {
+        /*printf("Next Position: %f, %f, %f\n", data->nextPos[0], data->nextPos[1], data->nextPos[2]);
+        printf("Bully Position: %f, %f, %f\n", target.posBully[0], target.posBully[1], target.posBully[2]);
+        printf("Next Velocity: %f\n", data->nextVel);
+        printf("Next Fangle: %i\n", fangle);
+        printf("Next Cam Yaw: %i\n", camYaw);*/
+    }
+
     // infer stick position
 
     StickTableData sticksol = infer_stick(data->nextPos, target.posBully, data->nextVel, fangle, camYaw);
+
+    // TODO: REMOVE
+    if (idx == 2496 && nSolutions == 0)
+    {
+        /*printf("Stick X: %i\n", sticksol.stickX);
+        printf("Stick Y: %i\n", sticksol.stickY);
+        printf("Angle: %i\n", sticksol.angle);
+        printf("Magnitude: %f\n", sticksol.magnitude);*/
+    }
 
     // check to see if the stick position is reasonable
     if (sticksol.magnitude > 64.0f || sticksol.magnitude < 0) {
@@ -275,7 +294,7 @@ __global__ void fourth_move(TargetLog target) {
     // simulate the slide.
 
     FancySlideInfo fourthslide;
-    if (!sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * gSineTableG[fangle >> 4], (data->nextVel) * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, fourthslide)) {
+    if (!sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * sm64_sins(fangle), (data->nextVel) * sm64_coss(fangle), fangle, fangle, camYaw, false, fourthslide)) {
         return;
     }
 
@@ -285,7 +304,9 @@ __global__ void fourth_move(TargetLog target) {
     if (miss > 63.0f) {
         return;
     }
+
     int solIdx = atomicAdd(&nFourthSlides, 1);
+
     if (solIdx > MAX_FOURTH_SLIDES) {
         return;
     }
@@ -295,6 +316,7 @@ __global__ void fourth_move(TargetLog target) {
     data2->stickY = correct_stick(sticksol.stickY);
     data2->camAngle = camYaw;
     data2->facingAngle = fangle;
+    data2->index = idx;
 }
 
 
@@ -328,7 +350,7 @@ __global__ void third_move(int index, TargetLog target) {
     }
 
     FancySlideInfo thirdslide;
-    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, thirdslide)){
+    if (!sim_slide(stickTabG[i], pos, vel, vel * sm64_sins(fangle), vel * sm64_coss(fangle), fangle, fangle, camYaw, false, thirdslide)){
         return;
     }
 
@@ -414,7 +436,7 @@ __global__ void second_move(int index, TargetLog target) {
     }
 
     FancySlideInfo secondslide;
-    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, secondslide)){
+    if (!sim_slide(stickTabG[i], pos, vel, vel * sm64_sins(fangle), vel * sm64_coss(fangle), fangle, fangle, camYaw, false, secondslide)){
         return;
     }
 
@@ -456,6 +478,17 @@ __global__ void second_move(int index, TargetLog target) {
         if (solIdx > MAX_SECOND_SLIDES) {
             break;
         }
+
+        /* TODO: REMOVE */
+        if (idx == 49545861)
+        {
+            /*printf("Step 2 Thread 49545861 Information:\n===========================\n");
+            printf("\tSlide End Position: %f, %f, %f\n", secondslide.endPos[0], secondslide.endPos[1], secondslide.endPos[2]);
+            printf("\tSlide End Speed: %f\n", secondslide.endSpeed);
+            printf("\tSlide End Facing Angle: %i\n", secondslide.endFacingAngle);
+            printf("\tSlide End Sliding Angle: %i\n\n", secondslide.endSlidingAngle);*/
+        }
+
         struct MotionData2* data = &(secondSlides[solIdx]);
         data->nextPos[0] = secondair.endPos[0];
         data->nextPos[1] = secondair.endPos[1];
@@ -467,6 +500,7 @@ __global__ void second_move(int index, TargetLog target) {
         data->facingAngle = fangle;
         data->waitingFrames = wf;
         data->donut = jelly;
+        data->index = idx; // TODO: REMOVE
     }
 
 }
@@ -498,7 +532,7 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
     }
     
     FancySlideInfo firstslide;
-    if (!sim_slide(stickTabG[i], pos, vel, vel * gSineTableG[fangle >> 4], vel * gCosineTableG[fangle >> 4], fangle, fangle, camYaw, false, firstslide)) {
+    if (!sim_slide(stickTabG[i], pos, vel, vel * sm64_sins(fangle), vel * sm64_coss(fangle), fangle, fangle, camYaw, false, firstslide)) {
         return;
     }
 
@@ -535,6 +569,17 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         if (solIdx > MAX_FIRST_SLIDES) {
             break;
         }
+        
+        /* TODO: REMOVE */
+        if (idx == 36781)
+        {
+            /*printf("Step 1 Thread 36781 Information:\n===========================\n");
+            printf("\tSlide End Position: %f, %f, %f\n", firstslide.endPos[0], firstslide.endPos[1], firstslide.endPos[2]);
+            printf("\tSlide End Speed: %f\n", firstslide.endSpeed);
+            printf("\tSlide End Facing Angle: %i\n", firstslide.endFacingAngle);
+            printf("\tSlide End Sliding Angle: %i\n\n", firstslide.endSlidingAngle);*/
+        }
+
         struct MotionData13* data = &(firstSlides[solIdx]);
         data->nextPos[0] = firstair.endPos[0];
         data->nextPos[1] = firstair.endPos[1];
@@ -545,6 +590,7 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         data->camAngle = camYaw;
         data->facingAngle = fangle;
         data->waitingFrames = wf;
+        data->index = idx; // TODO: REMOVE
     }
 }
 
@@ -553,16 +599,16 @@ int main(int argc, char* argv[]) {
 
     // changeable
     float cameraPosition[3];
-    cameraPosition[0] = -24910.0f;
-    cameraPosition[1] = -2300.0f;
-    cameraPosition[2] = 4440.0f;
+    cameraPosition[0] = -18499.642578f;
+    cameraPosition[1] = -2305.473633f;
+    cameraPosition[2] = -13259.316406f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = 5700.0f - (65536.0f * 7.0f);
-    firstPosition[1] = -2917.0f;
-    firstPosition[2] = 266.0f + (65536.0f * 1.0f);
+    firstPosition[0] = -1120976.0f;
+    firstPosition[1] = -2804.042969f;
+    firstPosition[2] = -917488.0f;
     // changeable
-    float firstSpeed = -1196779776.0f;
+    float firstSpeed = -1189634432.0f;
     // changeable
     float targetSpeed = 6.0e+08 * (73.0f / 53.0f);
 
@@ -638,7 +684,7 @@ int main(int argc, char* argv[]) {
     target.posBully[1] = -2976.0f;
     target.posBully[2] = -896.0f;
     target.bullySpeed = 30000;
-    target.bullyMovingYaw = 46904;
+    target.bullyMovingYaw = 11732;
     target.posCam[0] = cameraPosition[0];
     target.posCam[1] = cameraPosition[1];
     target.posCam[2] = cameraPosition[2];
@@ -699,10 +745,12 @@ int main(int argc, char* argv[]) {
     std::cout << "\tStick X, Y: " << firstSlidesCPU[0].stickX << ", " << firstSlidesCPU[0].stickY << "\n";
     std::cout << "\tWaiting Frames: " << firstSlidesCPU[0].waitingFrames << std::endl;*/
 
-    for (int i = 9; i < 20 /* nFirstSlidesCPU */; i++) {
+    for (int i = 0; i < 1 /* nFirstSlidesCPU */; i++) {
         int hitCounter = 0;
 
         printf("id is %d\n", i);
+
+        printf("Solution thread index is: %i\n", firstSlidesCPU[i].index);
 
         int nSecondBlocks = (20129 * 8192 + nThreads - 1) / nThreads;
         int nSecondSlidesCPU = 0;
@@ -768,9 +816,15 @@ int main(int argc, char* argv[]) {
             if (nFourthSlidesCPU == 0) {
                 continue;
             }
+
             if (nFourthSlidesCPU > MAX_FOURTH_SLIDES) {
                 fprintf(stderr, "Warning: The number of fourth slide paths has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
                 nFourthSlidesCPU = MAX_FOURTH_SLIDES;
+            }
+
+            if (hitCounter == 0)
+            {
+                printf("Second Step Thread Index: %i\n", secondSlidesCPU[j].index);
             }
 
             hitCounter += nFourthSlidesCPU;
@@ -837,7 +891,7 @@ int main(int argc, char* argv[]) {
     cudaFree(fourthSlidesGPU);
     cudaFree(finalDataLogGPU);
 
-    printf("complete!");
+    printf("Complete!");
 
     return 0;
 }

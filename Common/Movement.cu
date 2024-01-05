@@ -3,6 +3,7 @@
 
 #include "Floors.cuh"
 #include "Trig.cuh"
+#include "VMath.cuh"
 
 namespace BITFS {
 
@@ -10,16 +11,6 @@ namespace BITFS {
     // might be inaccurate, takes some shortcuts.
     // note that it takes the floor normal as a parameter, this is so we don't have to keep recomputing that shit.
     __host__ __device__ SlideInfo crude_sim_slide(StickTableData stick, float* startPos, float startSpeed, int startAngle, int camera, float* slope) {
-
-        // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
-        float* cosineTable, * sineTable;
-        #if !defined(__CUDA_ARCH__)
-            cosineTable = gCosineTable;
-            sineTable = gSineTable;
-        #else
-            cosineTable = gCosineTableG;
-            sineTable = gSineTableG;
-        #endif
 
         // initialize some variables we'll be reusing because they get updated
         float nextPos[3];
@@ -39,22 +30,22 @@ namespace BITFS {
         // and the angle stuff
         int intendedDYaw = stick.angle + cameraYaw - facingAngle;
         intendedDYaw = fix(intendedDYaw);
-        float forward = cosineTable[intendedDYaw >> 4];
-        float sideward = sineTable[intendedDYaw >> 4];
+        float forward = sm64_coss(intendedDYaw);
+        float sideward = sm64_sins(intendedDYaw);
 
         float lossFactor = intendedMag / 32.0f * forward * 0.02f + 0.92f;
 
         // and the speed updating from sliding stuff
-        float velX = speed * sineTable[facingAngle >> 4];
-        float velZ = speed * cosineTable[facingAngle >> 4];
+        float velX = speed * sm64_sins(facingAngle);
+        float velZ = speed * sm64_coss(facingAngle);
         float oldSpeed = sqrtf(velX * velX + velZ * velZ);
         velX += velZ * (intendedMag / 32.0f) * sideward * 0.05f;
         velZ -= velX * (intendedMag / 32.0f) * sideward * 0.05f;
         float newSpeed = sqrtf(velX * velX + velZ * velZ);
         velX = velX * oldSpeed / newSpeed;
         velZ = velZ * oldSpeed / newSpeed;
-        velX += 7.0f * steepness * sineTable[slopeAngle >> 4];
-        velZ += 7.0f * steepness * cosineTable[slopeAngle >> 4];
+        velX += 7.0f * steepness * sm64_sins(slopeAngle);
+        velZ += 7.0f * steepness * sm64_coss(slopeAngle);
         velX *= lossFactor;
         velZ *= lossFactor;
 
@@ -85,15 +76,10 @@ namespace BITFS {
     __host__ __device__ bool sim_slide(StickTableData stick, float* startPos, float startSpeed, float vX, float vZ, int faceAngle, int slideYaw, int camera, bool usePolePlatform, FancySlideInfo& output) {
 
         // Choose the appropriate trig tables depending on whether the function is called from the host or from the device
-        float *cosineTable, *sineTable;
         Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
-            cosineTable = gCosineTable;
-            sineTable = gSineTable;
             floorSet = floors;
         #else
-            cosineTable = gCosineTableG;
-            sineTable = gSineTableG;
             floorSet = floorsG;
         #endif
 
@@ -111,8 +97,8 @@ namespace BITFS {
         // and the angle stuff
         int intendedDYaw = stick.angle + cameraYaw - slidingYaw;
         intendedDYaw = fix(intendedDYaw);
-        float forward = cosineTable[intendedDYaw >> 4];
-        float sideward = sineTable[intendedDYaw >> 4];
+        float forward = sm64_coss(intendedDYaw);
+        float sideward = sm64_sins(intendedDYaw);
 
         // and the 10k loss factor stuff.
         if (forward < 0.0f && startSpeed >= 0.0f) {
@@ -142,8 +128,8 @@ namespace BITFS {
         int slopeAngle = usePolePlatform ? 0 : atan2s(floor->normal[2], floor->normal[0]);
         slopeAngle = fix(slopeAngle);
         float steepness = usePolePlatform ? 0 : sqrtf(floor->normal[0] * floor->normal[0] + floor->normal[2] * floor->normal[2]);
-        velX += 7.0f * steepness * sineTable[slopeAngle >> 4];
-        velZ += 7.0f * steepness * cosineTable[slopeAngle >> 4];
+        velX += 7.0f * steepness * sm64_sins(slopeAngle);
+        velZ += 7.0f * steepness * sm64_coss(slopeAngle);
         velX *= lossFactor;
         velZ *= lossFactor;
         nextPos[0] = nextPos[0] + normalY * (velX / 4.0f);
@@ -200,15 +186,10 @@ namespace BITFS {
 
     //simulates 1QF of HAU-aligned travel in the air, including floor snap up for recalculating things and being precise about it.
     __host__ __device__ bool sim_airstep(float* initialPos, float initialSpeed, int initialAngle, bool first, AirInfo& output) {
-        float* cosineTable, *sineTable;
         Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
-            cosineTable = gCosineTable;
-            sineTable = gSineTable;
             floorSet = floors;
         #else
-            cosineTable = gCosineTableG;
-            sineTable = gSineTableG;
             floorSet = floorsG;
         #endif
         
@@ -227,8 +208,8 @@ namespace BITFS {
             speed = initialSpeed;
         }
 
-        float velX = speed * sineTable[angle >> 4];
-        float velZ = speed * cosineTable[angle >> 4];
+        float velX = speed * sm64_sins(angle);
+        float velZ = speed * sm64_coss(angle);
 
         nextPos[0] += velX / 4.0f;
         nextPos[2] += velZ / 4.0f;

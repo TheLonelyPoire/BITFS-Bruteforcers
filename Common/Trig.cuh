@@ -23,9 +23,9 @@ namespace BITFS {
 
 	__host__ __device__ void init_reverse_atan();
 
-	__host__ __device__ float sm64_sins(int angle);
+	__host__ __device__ float sm64_sins(unsigned short angle);
 
-	__host__ __device__ float sm64_coss(int angle);
+	__host__ __device__ float sm64_coss(unsigned short angle);
 
 	__host__ __device__ int16_t atan2_lookup(float z, float x);
 

@@ -21,6 +21,7 @@
     <ClInclude Include="..\Common\Stick.cuh" />
     <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />
+    <ClInclude Include="..\Common\VMath.cuh" />
     <ClInclude Include="PoleSetupStructs.hpp" />
   </ItemGroup>
   <ItemGroup>
@@ -30,6 +31,7 @@
     <CudaCompile Include="..\Common\Stick.cu" />
     <CudaCompile Include="..\Common\Surface.cu" />
     <CudaCompile Include="..\Common\Trig.cu" />
+    <CudaCompile Include="..\Common\VMath.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{CF4A4618-224D-40B1-B5EB-570EE5D12109}</ProjectGuid>

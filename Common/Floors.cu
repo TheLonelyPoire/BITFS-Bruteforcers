@@ -284,15 +284,10 @@ namespace BITFS {
     __host__ __device__ bool stability_check(float* position, float speed, int angle) {
 
         // Choose the appropriate trig tables/floor set depending on whether the function is called from the host or from the device
-        float* cosineTable, * sineTable;
         Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
-            cosineTable = gCosineTable;
-            sineTable = gSineTable;
             floorSet = floors;
         #else
-            cosineTable = gCosineTableG;
-            sineTable = gSineTableG;
             floorSet = floorsG;
         #endif
 
@@ -301,8 +296,8 @@ namespace BITFS {
         nextPos[1] = position[1];
         nextPos[2] = position[2];
         int correctedAngle = fix(angle);
-        float velX = speed * sineTable[correctedAngle >> 4];
-        float velZ = speed * cosineTable[correctedAngle >> 4];
+        float velX = speed * sm64_sins(correctedAngle);
+        float velZ = speed * sm64_coss(correctedAngle);
 
         Surface* floor;
         float floorheight;

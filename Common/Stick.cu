@@ -114,16 +114,10 @@ namespace BITFS {
 
     // works out the stick position needed to hit a given target with a 1 frame crouchslide.
     __host__ __device__ StickTableData infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw) {
-
-        float* cosineTable, * sineTable;
         Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
-            cosineTable = gCosineTable;
-            sineTable = gSineTable;
             floorSet = floors;
         #else
-            cosineTable = gCosineTableG;
-            sineTable = gSineTableG;
             floorSet = floorsG;
         #endif
 
@@ -138,14 +132,14 @@ namespace BITFS {
         // used to derive the stick position. It's done this way because the quadratic was susceptible to catastrophic cancellation
         // and division by zero, and this isnt. I at least verified it works, by testing all stick positions and comparing them to
         // the one recommended by this block of black magic.
-        if (fabs(sineTable[travelAngle >> 4]) > fabs(cosineTable[travelAngle >> 4])) {
-            float cotang = cosineTable[travelAngle >> 4] / sineTable[travelAngle >> 4];
+        if (fabs(sm64_sins(travelAngle)) > fabs(sm64_coss(travelAngle))) {
+            float cotang = sm64_coss(travelAngle) / sm64_sins(travelAngle);
             float wCotang = (startPos[2] - endPos[2]) / (startPos[0] - endPos[0]);
             float epsOverAlphC = 4.0f * (wCotang - cotang) / ((1.0f + cotang * wCotang) * (1.0f + cotang * wCotang));
             lPrime = -640.0f * 0.25f * (1.0f + cotang * wCotang) * (epsOverAlphC + (1.0f / 4.0f) * cotang * epsOverAlphC * epsOverAlphC + (1.0f / 8.0f) * cotang * cotang * epsOverAlphC * epsOverAlphC * epsOverAlphC);
         }
         else {
-            float tang = sineTable[travelAngle >> 4] / cosineTable[travelAngle >> 4];
+            float tang = sm64_sins(travelAngle) / sm64_coss(travelAngle);
             float wTang = (startPos[0] - endPos[0]) / (startPos[2] - endPos[2]);
             float epsOverAlphW = 4.0f * (tang - wTang) / ((tang * wTang + 1.0f) * (tang * wTang + 1.0f));
             lPrime = -640.0f * 0.25f * (tang * wTang + 1.0f) * (epsOverAlphW + (1.0f / 4.0f) * wTang * epsOverAlphW * epsOverAlphW + (1.0f / 8.0f) * wTang * wTang * epsOverAlphW * epsOverAlphW * epsOverAlphW);
@@ -162,8 +156,8 @@ namespace BITFS {
         int stickAngle = intendedDYaw + travelAngle - cameraYaw;
         stickAngle = (stickAngle + 65536) % 65536;
         float stickMagnitude = sqrtf(128.0f * intendedMag);
-        float yS = -stickMagnitude * cosineTable[stickAngle >> 4];
-        float xS = stickMagnitude * sineTable[stickAngle >> 4];
+        float yS = -stickMagnitude * sm64_coss(stickAngle);
+        float xS = stickMagnitude * sm64_sins(stickAngle);
 
         int x = round(xS);
         int y = round(yS);
@@ -171,7 +165,16 @@ namespace BITFS {
         struct StickTableData solution;
         solution.stickX = x;
         solution.stickY = y;
-        solution.magnitude = sqrtf(x * x + y * y);
+
+        if (x * x + y * y < 0)
+        {
+            printf("ERROR: SQUARE OF STICK VALUES HAS OVERFLOWED!\n\n");
+            solution.magnitude = -1;
+        }
+        else
+        {
+            solution.magnitude = sqrtf(x * x + y * y);
+        }
         solution.angle = atan2s(-y, x);
         return solution;
     }
