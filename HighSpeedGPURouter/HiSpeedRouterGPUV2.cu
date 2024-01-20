@@ -27,6 +27,8 @@
 # define MAX_THIRD_SLIDES 10000
 # define MAX_FOURTH_SLIDES 100000
 
+# define BULLY_HEIGHT_THRESHOLD -2866.0f
+
 using namespace BITFS;
 
 __device__ MotionData13* firstSlides;
@@ -207,7 +209,8 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
         // at this point, we must resimulate the final crouchslide to find Mario's angle and other parameters
         // of relevance for simulating the bully collision.
 
-        StickTableData sticksol = infer_stick(thirdData->nextPos, target.posBully, thirdData->nextVel, fourthData->facingAngle, fourthData->camAngle);
+        StickTableData sticksol;
+        bool success = infer_stick(thirdData->nextPos, target.posBully, thirdData->nextVel, fourthData->facingAngle, fourthData->camAngle, sticksol);
 
         FancySlideInfo lastslide;
         bool successfulSlide = sim_slide(sticksol, thirdData->nextPos, thirdData->nextVel, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle, false, lastslide);
@@ -263,36 +266,16 @@ __global__ void fourth_move(TargetLog target) {
         return;
     }
 
-    // TODO: REMOVE
-    if (idx == 2496 && nSolutions == 0)
-    {
-        /*printf("Next Position: %f, %f, %f\n", data->nextPos[0], data->nextPos[1], data->nextPos[2]);
-        printf("Bully Position: %f, %f, %f\n", target.posBully[0], target.posBully[1], target.posBully[2]);
-        printf("Next Velocity: %f\n", data->nextVel);
-        printf("Next Fangle: %i\n", fangle);
-        printf("Next Cam Yaw: %i\n", camYaw);*/
-    }
-
     // infer stick position
-
-    StickTableData sticksol = infer_stick(data->nextPos, target.posBully, data->nextVel, fangle, camYaw);
-
-    // TODO: REMOVE
-    if (idx == 2496 && nSolutions == 0)
-    {
-        /*printf("Stick X: %i\n", sticksol.stickX);
-        printf("Stick Y: %i\n", sticksol.stickY);
-        printf("Angle: %i\n", sticksol.angle);
-        printf("Magnitude: %f\n", sticksol.magnitude);*/
-    }
+    StickTableData sticksol;
+    bool success = infer_stick(data->nextPos, target.posBully, data->nextVel, fangle, camYaw, sticksol);
 
     // check to see if the stick position is reasonable
-    if (sticksol.magnitude > 64.0f || sticksol.magnitude < 0) {
+    if (!success || sticksol.magnitude > 64.0f) {
         return;
     }
 
     // simulate the slide.
-
     FancySlideInfo fourthslide;
     if (!sim_slide(sticksol, data->nextPos, data->nextVel, (data->nextVel) * sm64_sins(fangle), (data->nextVel) * sm64_coss(fangle), fangle, fangle, camYaw, false, fourthslide)) {
         return;
@@ -316,7 +299,6 @@ __global__ void fourth_move(TargetLog target) {
     data2->stickY = correct_stick(sticksol.stickY);
     data2->camAngle = camYaw;
     data2->facingAngle = fangle;
-    data2->index = idx;
 }
 
 
@@ -364,6 +346,11 @@ __global__ void third_move(int index, TargetLog target) {
 
     AirInfo thirdair;
     if(!sim_airstep(thirdslide.endPos, thirdslide.endSpeed, thirdslide.endFacingAngle, false, thirdair) || assess_floor(thirdair.endPos) != 2) {
+        return;
+    }
+
+    // below the bully height constraint?
+    if (thirdair.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
         return;
     }
 
@@ -453,6 +440,11 @@ __global__ void second_move(int index, TargetLog target) {
         return;
     }
 
+    // below the bully height constraint?
+    if (secondair.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
+        return;
+    }
+
     float nextspeed = secondair.endSpeed;
     // iterate over waiting frames. See if it's stable.
     for (int wf = 0; wf <= 3; wf++) {
@@ -479,16 +471,6 @@ __global__ void second_move(int index, TargetLog target) {
             break;
         }
 
-        /* TODO: REMOVE */
-        if (idx == 49545861)
-        {
-            /*printf("Step 2 Thread 49545861 Information:\n===========================\n");
-            printf("\tSlide End Position: %f, %f, %f\n", secondslide.endPos[0], secondslide.endPos[1], secondslide.endPos[2]);
-            printf("\tSlide End Speed: %f\n", secondslide.endSpeed);
-            printf("\tSlide End Facing Angle: %i\n", secondslide.endFacingAngle);
-            printf("\tSlide End Sliding Angle: %i\n\n", secondslide.endSlidingAngle);*/
-        }
-
         struct MotionData2* data = &(secondSlides[solIdx]);
         data->nextPos[0] = secondair.endPos[0];
         data->nextPos[1] = secondair.endPos[1];
@@ -500,7 +482,6 @@ __global__ void second_move(int index, TargetLog target) {
         data->facingAngle = fangle;
         data->waitingFrames = wf;
         data->donut = jelly;
-        data->index = idx; // TODO: REMOVE
     }
 
 }
@@ -549,6 +530,11 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         return;
     }
 
+    // below the bully height constraint?
+    if (firstair.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
+        return;
+    }
+
     float nextspeed = firstair.endSpeed;
     // iterate over waiting frames. See if it's stable.
     for (int wf = 0; wf <= 3; wf++) {
@@ -569,16 +555,7 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         if (solIdx > MAX_FIRST_SLIDES) {
             break;
         }
-        
-        /* TODO: REMOVE */
-        if (idx == 36781)
-        {
-            /*printf("Step 1 Thread 36781 Information:\n===========================\n");
-            printf("\tSlide End Position: %f, %f, %f\n", firstslide.endPos[0], firstslide.endPos[1], firstslide.endPos[2]);
-            printf("\tSlide End Speed: %f\n", firstslide.endSpeed);
-            printf("\tSlide End Facing Angle: %i\n", firstslide.endFacingAngle);
-            printf("\tSlide End Sliding Angle: %i\n\n", firstslide.endSlidingAngle);*/
-        }
+       
 
         struct MotionData13* data = &(firstSlides[solIdx]);
         data->nextPos[0] = firstair.endPos[0];
@@ -590,7 +567,6 @@ __global__ void first_move(float posX, float posY, float posZ, float vel, Target
         data->camAngle = camYaw;
         data->facingAngle = fangle;
         data->waitingFrames = wf;
-        data->index = idx; // TODO: REMOVE
     }
 }
 
@@ -599,22 +575,22 @@ int main(int argc, char* argv[]) {
 
     // changeable
     float cameraPosition[3];
-    cameraPosition[0] = -18499.642578f;
-    cameraPosition[1] = -2305.473633f;
-    cameraPosition[2] = -13259.316406f;
+    cameraPosition[0] = -8657.244141f;
+    cameraPosition[1] = -2304.527832f;
+    cameraPosition[2] = 29007.324219f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = -1120976.0f;
-    firstPosition[1] = -2804.042969f;
-    firstPosition[2] = -917488.0f;
+    firstPosition[0] = -464816.0f;
+    firstPosition[1] = -2866.0f;
+    firstPosition[2] = 1900288.0f;
     // changeable
-    float firstSpeed = -1189634432.0f;
+    float firstSpeed = -1218989824.0f;
     // changeable
     float targetSpeed = 6.0e+08 * (73.0f / 53.0f);
 
     int nThreads = 256;
 
-    std::string outFile = "lastData.csv";
+    std::string outFile = "verifiedVersion.csv";
 
     bool verbose = false;
 
@@ -745,12 +721,10 @@ int main(int argc, char* argv[]) {
     std::cout << "\tStick X, Y: " << firstSlidesCPU[0].stickX << ", " << firstSlidesCPU[0].stickY << "\n";
     std::cout << "\tWaiting Frames: " << firstSlidesCPU[0].waitingFrames << std::endl;*/
 
-    for (int i = 0; i < 1 /* nFirstSlidesCPU */; i++) {
+    for (int i = 0; i < nFirstSlidesCPU; i++) {
         int hitCounter = 0;
 
         printf("id is %d\n", i);
-
-        printf("Solution thread index is: %i\n", firstSlidesCPU[i].index);
 
         int nSecondBlocks = (20129 * 8192 + nThreads - 1) / nThreads;
         int nSecondSlidesCPU = 0;
@@ -820,11 +794,6 @@ int main(int argc, char* argv[]) {
             if (nFourthSlidesCPU > MAX_FOURTH_SLIDES) {
                 fprintf(stderr, "Warning: The number of fourth slide paths has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
                 nFourthSlidesCPU = MAX_FOURTH_SLIDES;
-            }
-
-            if (hitCounter == 0)
-            {
-                printf("Second Step Thread Index: %i\n", secondSlidesCPU[j].index);
             }
 
             hitCounter += nFourthSlidesCPU;

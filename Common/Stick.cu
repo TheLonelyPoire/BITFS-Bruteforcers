@@ -112,8 +112,8 @@ namespace BITFS {
     }
 
 
-    // works out the stick position needed to hit a given target with a 1 frame crouchslide.
-    __host__ __device__ StickTableData infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw) {
+    // Works out the stick position needed to hit a given target with a 1 frame crouchslide. Return value is whether or not a valid stick position was computed.
+    __host__ __device__ bool infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw, StickTableData& output) {
         Surface* floorSet;
         #if !defined(__CUDA_ARCH__)
             floorSet = floors;
@@ -162,21 +162,24 @@ namespace BITFS {
         int x = round(xS);
         int y = round(yS);
 
-        struct StickTableData solution;
-        solution.stickX = x;
-        solution.stickY = y;
+        output.stickX = x;
+        output.stickY = y;
 
         if (x * x + y * y < 0)
         {
             printf("ERROR: SQUARE OF STICK VALUES HAS OVERFLOWED!\n\n");
-            solution.magnitude = -1;
+            return false;
+        }
+        else if (x * x == 1 || y * y == 1) // Raw stick values of +/-1 are not allowed
+        {
+            return false;
         }
         else
         {
-            solution.magnitude = sqrtf(x * x + y * y);
+            output.magnitude = sqrtf(x * x + y * y);
         }
-        solution.angle = atan2s(-y, x);
-        return solution;
+        output.angle = atan2s(-y, x);
+        return true;
     }
 
 }

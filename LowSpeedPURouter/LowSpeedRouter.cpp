@@ -82,9 +82,11 @@ bool move14(AllData* dataPoint, short fangle) {
                 speed += 1.1f;
             }
             // try to solve for the stick position that hits the aim point
-            StickTableData sticksol = infer_stick(dataPoint->positions.pos14, aimPoint, speed, fangle, camYaw);
+            StickTableData sticksol;
+            bool success = infer_stick(dataPoint->positions.pos14, aimPoint, speed, fangle, camYaw, sticksol);
+            
             // check to see that it's feasible
-            if(sticksol.magnitude >= 64.0f) {
+            if(!success || sticksol.magnitude >= 64.0f) {
                 continue;
             }
             // simulate the slide
@@ -533,7 +535,7 @@ bool move11(AllData* dataPoint) {
                 (dataPoint->donuts) = glazed;
                 counter++;
                 // fuck with the counter to continue with partially terminated computations.
-                if(counter > 420) {
+                if(counter > 0) {
                     if(move12(dataPoint, fineslide.endFacingAngle)) {
                         return true;
                     }
@@ -572,7 +574,7 @@ int main(int argc, char* argv[]) {
     int targetSpeed = -4232649;
     int targetHAU = 1272;
        
-    std::string outFile = "outData.csv";
+    std::string outFile = "verifiedVersion.csv";
     
     bool verbose = false;
     

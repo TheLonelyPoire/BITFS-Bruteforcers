@@ -23,6 +23,8 @@
 
 # define M_PI            3.14159265358979323846  /* pi */
 
+# define BULLY_HEIGHT_THRESHOLD -2865.0f
+
 using namespace BITFS;
 
 bool attainableArctans[8192];
@@ -160,6 +162,11 @@ void move23(AllData* dataPoint) {
                 continue;
             }
 
+            // below the bully height constraint?
+            if (airmove.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
+                continue;
+            }
+
             // the camera is going to move to a 1.5/98.5 mix of your new position, and its old position, on frame 1.
             // I don't think it's exact, it'll be off a bit when we do it in reality
             // but given our stupid-huge distances, the inaccuracy shouldn't matter.
@@ -213,10 +220,6 @@ void move23(AllData* dataPoint) {
             }
             
             totalHits23++;
-
-            // you need to do something here so we only log the data from the highest-speed thing that makes it this far!!
-            // not sure what to do here.
-            // return true;
         }
     }
     // return false;
@@ -272,6 +275,12 @@ void move22(AllData* dataPoint) {
                 if (assess_floor(airmove.endPos) != 2 && assess_floor(airmove.endPos) != 3) {
                     continue;
                 }
+
+                // below the bully height constraint?
+                if (airmove.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
+                    continue;
+                }
+
                 // did you stably land?
                 if (!stability_check(airmove.endPos, airmove.endSpeed, fineslide.endFacingAngle)) {
                     continue;
@@ -369,6 +378,12 @@ void move21(AllData* dataPoint) {
             if (!goodAir) {
                 continue;
             }
+
+            // below the bully height constraint?
+            if (airmove.endPos[1] > BULLY_HEIGHT_THRESHOLD) {
+                continue;
+            }
+
             // stable landing spot?
             if (!stability_check(airmove.endPos, airmove.endSpeed, fineslide.endFacingAngle)) {
                 continue;
@@ -423,12 +438,9 @@ void move21(AllData* dataPoint) {
             (dataPoint->angles).cam21 = camYaw;
             (dataPoint->donuts) = chocolate;
             // fuck with the counter to continue with partially terminated computations.
-            if (counter > 24) {
+            if (counter > 0) {
                 move22(dataPoint);
             }
-            if (counter > 32)
-                return;
-
             counter++;
         }
     }
@@ -468,7 +480,7 @@ int main(int argc, char* argv[]) {
 
     float targetSpeed = 6.0e+08 / (0.92f * 0.92f * 0.92f * 0.92f * (53.0f / 73.0f));
 
-    std::string outFile = "camFile.csv";
+    std::string outFile = "verifiedVersion.csv";
 
     bool verbose = false;
 
@@ -586,6 +598,10 @@ int main(int argc, char* argv[]) {
     wf << "Camera2 Position X, Camera2 Position Y, Camera2 Position Z, " << std::endl;
 
     move21(&data);
+
+    std::cout << "\nTotal Stage 1 Solutions Found: " << totalHits21 << "\n";
+    std::cout << "Total Stage 2 Solutions Found: " << totalHits22 << "\n";
+    std::cout << "Total Full Solutions Found: " << totalHits23 << "\n";
 
     if(foundSolution){
         wf << best_solution.positions.posCam1[0] << "," << best_solution.positions.posCam1[1] << "," << best_solution.positions.posCam1[2] << ",";

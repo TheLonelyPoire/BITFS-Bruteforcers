@@ -23,6 +23,6 @@ namespace BITFS {
     // converts internal stick positions back into input stick positions.
     __host__ __device__ int correct_stick(int stick);
 
-    // works out the stick position needed to hit a given target with a 1 frame crouchslide.
-    __host__ __device__ StickTableData infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw);
+    // Works out the stick position needed to hit a given target with a 1 frame crouchslide. Return value is whether or not a valid stick position was computed.
+    __host__ __device__ bool infer_stick(float* startPos, float* endPos, float startSpeed, int angle, int startCameraYaw, StickTableData& output);
 }

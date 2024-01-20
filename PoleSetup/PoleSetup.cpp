@@ -504,7 +504,7 @@ int main(int argc, char* argv[]) {
     
     unsigned int numMaxSolutions = 100;
        
-    std::string outFile = "outData.csv";
+    std::string outFile = "verifiedVersion.csv";
     
     bool verbose = false;
     
