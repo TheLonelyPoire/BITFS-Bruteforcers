@@ -26,6 +26,9 @@
     <CudaCompile Include="..\Common\Camera.cu">
       <Filter>Source</Filter>
     </CudaCompile>
+    <CudaCompile Include="..\Common\BloomFilter.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\Donut.cuh">
@@ -37,7 +40,7 @@
     <ClInclude Include="..\Common\Floors.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="HighSpeedRouteStructs.hpp">
+    <ClInclude Include="HighSpeedRouterStructs.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Movement.cuh">
@@ -56,6 +59,12 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\BloomFilter.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="HighSpeedRouterConstants.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

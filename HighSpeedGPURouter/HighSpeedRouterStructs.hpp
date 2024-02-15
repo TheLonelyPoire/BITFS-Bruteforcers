@@ -30,6 +30,9 @@ namespace BITFS {
         int facingAngle;
         int stickX;
         int stickY;
+        float nextPos[3];
+        float nextVel;
+        int nextAngle;
     };
 
     struct PositionLog {
@@ -38,6 +41,7 @@ namespace BITFS {
         float pos22[3];
         float pos23[3];
         float pos24[3];
+        float posArrive[3];
     };
 
     struct VelocityLog {
@@ -45,6 +49,7 @@ namespace BITFS {
         float vel22;
         float vel23;
         float vel24;
+        float velArrive;
     };
 
     struct StickLog {
@@ -67,6 +72,7 @@ namespace BITFS {
         int facing23;
         int cam24;
         int facing24;
+        int facingArrive;
     };
 
     struct WaitingLog {
@@ -96,6 +102,7 @@ namespace BITFS {
         AngleLog angles;
         WaitingLog waits;
         BullyData bully;
+        int identifier;
     };
 
 }

@@ -11,6 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="..\Common\BloomFilter.cu">
+      <FileType>CppCode</FileType>
+    </CudaCompile>
     <CudaCompile Include="..\Common\Camera.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
@@ -40,6 +43,7 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\BloomFilter.cuh" />
     <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp" />
     <ClInclude Include="..\Common\Camera.cuh" />
     <ClInclude Include="..\Common\Donut.cuh" />
@@ -49,7 +53,8 @@
     <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />
     <ClInclude Include="..\Common\VMath.cuh" />
-    <ClInclude Include="HighSpeedRouteStructs.hpp" />
+    <ClInclude Include="HighSpeedRouterConstants.hpp" />
+    <ClInclude Include="HighSpeedRouterStructs.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8AC53D90-60A6-4657-8986-910DCFCF61F8}</ProjectGuid>

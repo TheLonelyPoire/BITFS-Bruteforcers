@@ -9,6 +9,7 @@
 #include "device_launch_parameters.h"
 #include "device_atomic_functions.h"
 
+#include "../Common/BloomFilter.cuh"
 #include "../Common/CommonBruteforcerStructs.hpp"
 #include "../Common/Camera.cuh"
 #include "../Common/Donut.cuh"
@@ -19,15 +20,8 @@
 #include "../Common/Trig.cuh"
 #include "../Common/VMath.cuh"
 
-#include "HighSpeedRouteStructs.hpp"
-
-
-# define MAX_FIRST_SLIDES 10000
-# define MAX_SECOND_SLIDES 10000
-# define MAX_THIRD_SLIDES 10000
-# define MAX_FOURTH_SLIDES 100000
-
-# define BULLY_HEIGHT_THRESHOLD -2866.0f
+#include "HighSpeedRouterConstants.hpp"
+#include "HighSpeedRouterStructs.hpp"
 
 using namespace BITFS;
 
@@ -44,6 +38,22 @@ __device__ int lookupSize;
 __device__ AllData* finalSolutionsLog;
 __device__ int nSolutions = 0;
 
+
+// Bloom Filter Arrays
+bool uniques1[MAX_FIRST_SLIDES];
+float floats11[MAX_FIRST_SLIDES];
+float floats12[MAX_FIRST_SLIDES];
+float floats13[MAX_FIRST_SLIDES];
+
+bool uniques2[MAX_SECOND_SLIDES];
+float floats21[MAX_SECOND_SLIDES];
+float floats22[MAX_SECOND_SLIDES];
+float floats23[MAX_SECOND_SLIDES];
+
+__device__ bool uniques4[MAX_FOURTH_SLIDES];
+__device__ float floats41[MAX_FOURTH_SLIDES];
+__device__ float floats42[MAX_FOURTH_SLIDES];
+__device__ float floats43[MAX_FOURTH_SLIDES];
 
 
 // copied from Spud's thing.
@@ -152,10 +162,22 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
 
     int counter = 0;
 
+    for (int j = 0; j < nFourthSlides; j++) {
+        floats41[j] = fourthSlides[j].nextPos[0];
+        floats42[j] = fourthSlides[j].nextPos[2];
+        floats43[j] = fourthSlides[j].nextVel;
+    }
+
+    bloom_filter(nFourthSlides, floats41, floats42, floats43, uniques4);
+
     for (int i = 0; i < nFourthSlides; i++) {
 
-        if (nSolutions + i >= MAX_FOURTH_SLIDES) {
+        if (nSolutions + counter >= MAX_FOURTH_SLIDES) {
             break;
+        }
+
+        if (!uniques4[i]) {
+            continue;
         }
 
         MotionData4* fourthData = &(fourthSlides[i]);
@@ -163,72 +185,55 @@ __global__ void rewrite_structs(int index1, int index2, TargetLog target, float 
         MotionData2* secondData = &(secondSlides[index2]);
         MotionData13* firstData = &(firstSlides[index1]);
 
-        finalSolutionsLog[nSolutions + i].positions.posCam[0] = target.posCam[0];
-        finalSolutionsLog[nSolutions + i].positions.posCam[1] = target.posCam[1];
-        finalSolutionsLog[nSolutions + i].positions.posCam[2] = target.posCam[2];
-        finalSolutionsLog[nSolutions + i].positions.pos21[0] = posX;
-        finalSolutionsLog[nSolutions + i].positions.pos21[1] = posY;
-        finalSolutionsLog[nSolutions + i].positions.pos21[2] = posZ;
-        finalSolutionsLog[nSolutions + i].positions.pos22[0] = firstData->nextPos[0];
-        finalSolutionsLog[nSolutions + i].positions.pos22[1] = firstData->nextPos[1];
-        finalSolutionsLog[nSolutions + i].positions.pos22[2] = firstData->nextPos[2];
-        finalSolutionsLog[nSolutions + i].positions.pos23[0] = secondData->nextPos[0];
-        finalSolutionsLog[nSolutions + i].positions.pos23[1] = secondData->nextPos[1];
-        finalSolutionsLog[nSolutions + i].positions.pos23[2] = secondData->nextPos[2];
-        finalSolutionsLog[nSolutions + i].positions.pos24[0] = thirdData->nextPos[0];
-        finalSolutionsLog[nSolutions + i].positions.pos24[1] = thirdData->nextPos[1];
-        finalSolutionsLog[nSolutions + i].positions.pos24[2] = thirdData->nextPos[2];
+        finalSolutionsLog[nSolutions + counter].positions.posCam[0] = target.posCam[0];
+        finalSolutionsLog[nSolutions + counter].positions.posCam[1] = target.posCam[1];
+        finalSolutionsLog[nSolutions + counter].positions.posCam[2] = target.posCam[2];
+        finalSolutionsLog[nSolutions + counter].positions.pos21[0] = posX;
+        finalSolutionsLog[nSolutions + counter].positions.pos21[1] = posY;
+        finalSolutionsLog[nSolutions + counter].positions.pos21[2] = posZ;
+        finalSolutionsLog[nSolutions + counter].positions.pos22[0] = firstData->nextPos[0];
+        finalSolutionsLog[nSolutions + counter].positions.pos22[1] = firstData->nextPos[1];
+        finalSolutionsLog[nSolutions + counter].positions.pos22[2] = firstData->nextPos[2];
+        finalSolutionsLog[nSolutions + counter].positions.pos23[0] = secondData->nextPos[0];
+        finalSolutionsLog[nSolutions + counter].positions.pos23[1] = secondData->nextPos[1];
+        finalSolutionsLog[nSolutions + counter].positions.pos23[2] = secondData->nextPos[2];
+        finalSolutionsLog[nSolutions + counter].positions.pos24[0] = thirdData->nextPos[0];
+        finalSolutionsLog[nSolutions + counter].positions.pos24[1] = thirdData->nextPos[1];
+        finalSolutionsLog[nSolutions + counter].positions.pos24[2] = thirdData->nextPos[2];
+        finalSolutionsLog[nSolutions + counter].positions.posArrive[0] = fourthData->nextPos[0];
+        finalSolutionsLog[nSolutions + counter].positions.posArrive[1] = fourthData->nextPos[1];
+        finalSolutionsLog[nSolutions + counter].positions.posArrive[2] = fourthData->nextPos[2];
 
-        finalSolutionsLog[nSolutions + i].velocities.vel21 = firstSpeed;
-        finalSolutionsLog[nSolutions + i].velocities.vel22 = firstData->nextVel;
-        finalSolutionsLog[nSolutions + i].velocities.vel23 = secondData->nextVel;
-        finalSolutionsLog[nSolutions + i].velocities.vel24 = thirdData->nextVel;
+        finalSolutionsLog[nSolutions + counter].velocities.vel21 = firstSpeed;
+        finalSolutionsLog[nSolutions + counter].velocities.vel22 = firstData->nextVel;
+        finalSolutionsLog[nSolutions + counter].velocities.vel23 = secondData->nextVel;
+        finalSolutionsLog[nSolutions + counter].velocities.vel24 = thirdData->nextVel;
+        finalSolutionsLog[nSolutions + counter].velocities.velArrive = fourthData->nextVel;
 
-        finalSolutionsLog[nSolutions + i].sticks.stick21X = firstData->stickX;
-        finalSolutionsLog[nSolutions + i].sticks.stick21Y = firstData->stickY;
-        finalSolutionsLog[nSolutions + i].sticks.stick22X = secondData->stickX;
-        finalSolutionsLog[nSolutions + i].sticks.stick22Y = secondData->stickY;
-        finalSolutionsLog[nSolutions + i].sticks.stick23X = thirdData->stickX;
-        finalSolutionsLog[nSolutions + i].sticks.stick23Y = thirdData->stickY;
-        finalSolutionsLog[nSolutions + i].sticks.stick24X = fourthData->stickX;
-        finalSolutionsLog[nSolutions + i].sticks.stick24Y = fourthData->stickY;
+        finalSolutionsLog[nSolutions + counter].sticks.stick21X = firstData->stickX;
+        finalSolutionsLog[nSolutions + counter].sticks.stick21Y = firstData->stickY;
+        finalSolutionsLog[nSolutions + counter].sticks.stick22X = secondData->stickX;
+        finalSolutionsLog[nSolutions + counter].sticks.stick22Y = secondData->stickY;
+        finalSolutionsLog[nSolutions + counter].sticks.stick23X = thirdData->stickX;
+        finalSolutionsLog[nSolutions + counter].sticks.stick23Y = thirdData->stickY;
+        finalSolutionsLog[nSolutions + counter].sticks.stick24X = fourthData->stickX;
+        finalSolutionsLog[nSolutions + counter].sticks.stick24Y = fourthData->stickY;
 
-        finalSolutionsLog[nSolutions + i].angles.cam21 = firstData->camAngle;
-        finalSolutionsLog[nSolutions + i].angles.facing21 = firstData->facingAngle;
-        finalSolutionsLog[nSolutions + i].angles.cam22 = secondData->camAngle;
-        finalSolutionsLog[nSolutions + i].angles.facing22 = secondData->facingAngle;
-        finalSolutionsLog[nSolutions + i].angles.cam23 = thirdData->camAngle;
-        finalSolutionsLog[nSolutions + i].angles.facing23 = thirdData->facingAngle;
-        finalSolutionsLog[nSolutions + i].angles.cam24 = fourthData->camAngle;
-        finalSolutionsLog[nSolutions + i].angles.facing24 = fourthData->facingAngle;
+        finalSolutionsLog[nSolutions + counter].angles.cam21 = firstData->camAngle;
+        finalSolutionsLog[nSolutions + counter].angles.facing21 = firstData->facingAngle;
+        finalSolutionsLog[nSolutions + counter].angles.cam22 = secondData->camAngle;
+        finalSolutionsLog[nSolutions + counter].angles.facing22 = secondData->facingAngle;
+        finalSolutionsLog[nSolutions + counter].angles.cam23 = thirdData->camAngle;
+        finalSolutionsLog[nSolutions + counter].angles.facing23 = thirdData->facingAngle;
+        finalSolutionsLog[nSolutions + counter].angles.cam24 = fourthData->camAngle;
+        finalSolutionsLog[nSolutions + counter].angles.facing24 = fourthData->facingAngle;
+        finalSolutionsLog[nSolutions + counter].angles.facingArrive = fourthData->nextAngle;
 
-        finalSolutionsLog[nSolutions + i].waits.waiting21 = firstData->waitingFrames;
-        finalSolutionsLog[nSolutions + i].waits.waiting22 = secondData->waitingFrames;
-        finalSolutionsLog[nSolutions + i].waits.waiting23 = thirdData->waitingFrames;
+        finalSolutionsLog[nSolutions + counter].waits.waiting21 = firstData->waitingFrames;
+        finalSolutionsLog[nSolutions + counter].waits.waiting22 = secondData->waitingFrames;
+        finalSolutionsLog[nSolutions + counter].waits.waiting23 = thirdData->waitingFrames;
 
-        // at this point, we must resimulate the final crouchslide to find Mario's angle and other parameters
-        // of relevance for simulating the bully collision.
-
-        StickTableData sticksol;
-        bool success = infer_stick(thirdData->nextPos, target.posBully, thirdData->nextVel, fourthData->facingAngle, fourthData->camAngle, sticksol);
-
-        FancySlideInfo lastslide;
-        bool successfulSlide = sim_slide(sticksol, thirdData->nextPos, thirdData->nextVel, (thirdData->nextVel) * gSineTableG[(fourthData->facingAngle) >> 4], (thirdData->nextVel) * gCosineTableG[(fourthData->facingAngle) >> 4], fourthData->facingAngle, fourthData->facingAngle, fourthData->camAngle, false, lastslide);
-
-        if (!successfulSlide){
-            printf("FAILED SLIDE IN REWRITE STRUCTS! THIS SHOULD NOT HAPPEN!");
-            return;
-        }
-
-        // then, with this info, we simulate the bully impact.
-
-        BullyData collide = sim_bully_collision(lastslide.endPos, target.posBully, lastslide.endFacingAngle, target.bullyMovingYaw, lastslide.endSpeed, target.bullySpeed);
-
-        finalSolutionsLog[nSolutions + i].bully.posBully[0] = collide.posBully[0];
-        finalSolutionsLog[nSolutions + i].bully.posBully[1] = collide.posBully[1];
-        finalSolutionsLog[nSolutions + i].bully.posBully[2] = collide.posBully[2];
-        finalSolutionsLog[nSolutions + i].bully.angle = collide.angle;
-        finalSolutionsLog[nSolutions + i].bully.velBully = collide.velBully;
+        finalSolutionsLog[nSolutions + counter].identifier = nSolutions + counter;
 
         counter++;
     }
@@ -299,6 +304,12 @@ __global__ void fourth_move(TargetLog target) {
     data2->stickY = correct_stick(sticksol.stickY);
     data2->camAngle = camYaw;
     data2->facingAngle = fangle;
+
+    data2->nextPos[0] = fourthslide.endPos[0];
+    data2->nextPos[1] = fourthslide.endPos[1];
+    data2->nextPos[2] = fourthslide.endPos[2];
+    data2->nextVel = fourthslide.endSpeed;
+    data2->nextAngle = fourthslide.endFacingAngle;
 }
 
 
@@ -713,6 +724,14 @@ int main(int argc, char* argv[]) {
     struct MotionData13* firstSlidesCPU = (struct MotionData13*)std::malloc(nFirstSlidesCPU * sizeof(struct MotionData13));
     cudaMemcpy(firstSlidesCPU, firstSlidesGPU, nFirstSlidesCPU * sizeof(struct MotionData13), cudaMemcpyDeviceToHost);
 
+    for (int j = 0; j < nFirstSlidesCPU; j++) {
+        floats11[j] = firstSlidesCPU[j].nextPos[0];
+        floats12[j] = firstSlidesCPU[j].nextPos[2];
+        floats13[j] = firstSlidesCPU[j].nextVel;
+    }
+
+    bloom_filter(nFirstSlidesCPU, floats11, floats12, floats13, uniques1);
+
    /* std::cout << "Motion Data for the first id: \n";
     std::cout << "\tCam Angle: " << firstSlidesCPU[0].camAngle << "\n";
     std::cout << "\tFacing Angle: " << firstSlidesCPU[0].facingAngle << "\n";
@@ -722,6 +741,10 @@ int main(int argc, char* argv[]) {
     std::cout << "\tWaiting Frames: " << firstSlidesCPU[0].waitingFrames << std::endl;*/
 
     for (int i = 0; i < nFirstSlidesCPU; i++) {
+        if (!uniques1[i]) {
+            continue;
+        }
+        
         int hitCounter = 0;
 
         printf("id is %d\n", i);
@@ -741,11 +764,22 @@ int main(int argc, char* argv[]) {
             nFirstSlidesCPU = MAX_SECOND_SLIDES;
         }
 
-
         struct MotionData2* secondSlidesCPU = (struct MotionData2*)std::malloc(nSecondSlidesCPU * sizeof(struct MotionData2));
         cudaMemcpy(secondSlidesCPU, secondSlidesGPU, nSecondSlidesCPU * sizeof(struct MotionData2), cudaMemcpyDeviceToHost);
 
         for (int j = 0; j < nSecondSlidesCPU; j++) {
+            floats21[j] = secondSlidesCPU[j].nextPos[0];
+            floats22[j] = secondSlidesCPU[j].nextPos[2];
+            floats23[j] = secondSlidesCPU[j].nextVel;
+        }
+
+        bloom_filter(nSecondSlidesCPU, floats21, floats22, floats23, uniques2);
+
+        for (int j = 0; j < nSecondSlidesCPU; j++) {
+            if (!uniques2[j]) {
+                continue;
+            }
+
             // this is where things get a bit tricky. Our further progress depends on the details of the donut data
             // encoded in the second slide.
             // there's no clear mapping from the block and thread id we're on into the facing angle.
@@ -804,7 +838,7 @@ int main(int argc, char* argv[]) {
         }
         // free up memory
         std::free(secondSlidesCPU);
-        printf("Hits: %i\n\n", hitCounter);
+        printf("Overestimate of Hits: %i\n\n", hitCounter);
     }
     // free up memory
     std::free(firstSlidesCPU);
@@ -832,9 +866,10 @@ int main(int argc, char* argv[]) {
     wf << "Third Facing Angle, Third Cam Angle, Third Velocity, Third Stick X, Third Stick Y, Third Landing Frames, ";
     wf << "Fourth Position X, Fourth Position Y, Fourth Position Z, ";
     wf << "Fourth Facing Angle, Fourth Cam Angle, Fourth Velocity, Fourth Stick X, Fourth Stick Y, ";
-    wf << "Bully Position X, Bully Position Y, BullyPosition Z, ";
-    wf << "Bully Angle, Bully Velocity" << std::endl;
-
+    //wf << "Bully Position X, Bully Position Y, BullyPosition Z, ";
+    //wf << "Bully Angle, Bully Velocity" << std::endl;
+    wf << "Arrival Position X, Arrival Position Y, Arrival Position Z, ";
+    wf << "Arrival Angle, Arrival Velocity, solution ID" << std::endl;
 
     for (int k = 0; k < nSolutionsCPU; k++) {
         wf << finalDataLog[k].positions.posCam[0] << ", " << finalDataLog[k].positions.posCam[1] << ", " << finalDataLog[k].positions.posCam[2] << ", ";
@@ -846,8 +881,10 @@ int main(int argc, char* argv[]) {
         wf << finalDataLog[k].angles.facing23 << ", " << finalDataLog[k].angles.cam23 << ", " << finalDataLog[k].velocities.vel23 << ", " << finalDataLog[k].sticks.stick23X << ", " << finalDataLog[k].sticks.stick23Y << ", " << finalDataLog[k].waits.waiting23 << ", ";
         wf << finalDataLog[k].positions.pos24[0] << ", " << finalDataLog[k].positions.pos24[1] << ", " << finalDataLog[k].positions.pos24[2] << ", ";
         wf << finalDataLog[k].angles.facing24 << ", " << finalDataLog[k].angles.cam24 << ", " << finalDataLog[k].velocities.vel24 << ", " << finalDataLog[k].sticks.stick24X << ", " << finalDataLog[k].sticks.stick24Y << ", ";
-        wf << finalDataLog[k].bully.posBully[0] << ", " << finalDataLog[k].bully.posBully[1] << ", " << finalDataLog[k].bully.posBully[2] << ", ";
-        wf << finalDataLog[k].bully.angle << ", " << finalDataLog[k].bully.velBully << std::endl;
+        //wf << finalDataLog[k].bully.posBully[0] << ", " << finalDataLog[k].bully.posBully[1] << ", " << finalDataLog[k].bully.posBully[2] << ", ";
+        //wf << finalDataLog[k].bully.angle << ", " << finalDataLog[k].bully.velBully << std::endl;
+        wf << finalDataLog[k].positions.posArrive[0] << ", " << finalDataLog[k].positions.posArrive[1] << ", " << finalDataLog[k].positions.posArrive[2] << ", ";
+        wf << finalDataLog[k].angles.facingArrive << ", " << finalDataLog[k].velocities.velArrive << ", " << finalDataLog[k].identifier << std::endl;
     }
     wf.close();
 
