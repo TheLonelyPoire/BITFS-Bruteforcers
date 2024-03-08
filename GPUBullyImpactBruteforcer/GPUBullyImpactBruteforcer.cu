@@ -3,6 +3,7 @@
 #include <string> 
 #include <unordered_map>
 #include <iostream>
+#include <chrono>
 #include <cmath>
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -16,8 +17,8 @@
 
 #include "BullyImpactStructs.hpp"
 
-# define MAX_INITIALS_PER_ARRIVAL 10000
-# define MAX_GOOD_IMPACTS_PER_ARRIVAL 10000
+# define MAX_INITIALS_PER_ARRIVAL 5000000
+# define MAX_GOOD_IMPACTS_PER_ARRIVAL 500000
 # define MAX_IMPACTS 1000000
 
 using namespace BITFS;
@@ -207,9 +208,8 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
     if (idx >= nx * nz) {
         return;
     }
-    int overx = idx % nz;
-    int overz = (idx - overx) / nz;
-
+    int overx = idx % nx;
+    int overz = (idx - overx) / nx;
     
     // load up our bully data.
     struct BullyData bully;
@@ -249,7 +249,8 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
     // and it rounds off to the FST location, we hash it to get four locations in the bloom filter. 
     // Check them to eliminate duplicates (two bully positions which produce the same impact)
     // I just filled the last piece of the hash function with some random shit.
-    int locations[4];
+    // TODO: Comment back in
+    /*int locations[4];
     bool unique = false;
     hash(bully.velBully, (float)bully.angle, 23462432.0f, locations, 16);
     for (int k = 0; k < 4; k++) {
@@ -260,7 +261,7 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
     }
     if (!unique) {
         return;
-    }
+    }*/
 
 
     // increment our solution counter and record our solution.
@@ -492,6 +493,8 @@ int main(int argc, char* argv[]) {
     ImpactData* finalImpactsGPU;
     cudaMalloc((void**)&finalImpactsGPU, MAX_IMPACTS * sizeof(ImpactData));
 
+    // BullyData* initialImpactsCPU = (BullyData*) std::malloc(sizeof(BullyData) * MAX_INITIALS_PER_ARRIVAL);
+
     
     // and get those pointers onto the GPU.
     copy_pointers_to_gpu << <1, 1 >> > (filterGPU, initialImpactsGPU, goodImpactsGPU, finalImpactsGPU);
@@ -506,6 +509,11 @@ int main(int argc, char* argv[]) {
     bpos[0][1] = bullyCentral.posBully[2] - 16.0f;
     bpos[1][0] = bullyCentral.posBully[0] + 16.0f;
     bpos[1][1] = bullyCentral.posBully[2] + 16.0f;
+
+    std::cout << "Starting main loop...\n";
+
+    // Start the clock
+    auto computation_start = std::chrono::high_resolution_clock::now();
 
     // Now, iterate over possible ways that Mario could arrive near the bully.
     for (int i = 0; i < nApproaches; i++) {
@@ -545,7 +553,7 @@ int main(int argc, char* argv[]) {
         int nInitialsCPU = 0;
         cudaMemcpyToSymbol (nInitials, &nInitialsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
         initial_assessment << <nFirstBlocks, nThreads >> > (arrivalList[i], bullyCentral, nx, nz, zone[0][0], zone[0][1], granularity);
-        cudaMemcpyFromSymbol (&nInitialsCPU, sizeof(int), 0, cudaMemcpyDeviceToHost);
+        cudaMemcpyFromSymbol (&nInitialsCPU, nInitials, sizeof(int), 0, cudaMemcpyDeviceToHost);
 
         
         // if no solutions or too many solutions, continue to the next loop or clip off the number of solutions.
@@ -568,7 +576,7 @@ int main(int argc, char* argv[]) {
         int nImpactsCPU = 0;
         cudaMemcpyToSymbol (nImpacts, &nImpactsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
         time_evolution << <nSecondBlocks, nThreads >> > (nInitialsCPU);
-        cudaMemcpyFromSymbol (&nImpactsCPU, sizeof(int), 0, cudaMemcpyDeviceToHost);
+        cudaMemcpyFromSymbol (&nImpactsCPU, nImpacts, sizeof(int), 0, cudaMemcpyDeviceToHost);
 
         
         // again, clip if too many solutions and continue if no solutions.
@@ -585,7 +593,15 @@ int main(int argc, char* argv[]) {
         append_info << <1, 1 >> > (arrivalList[i], nImpactsCPU);
     }
     
+    // End the clock
+    auto computation_end = std::chrono::high_resolution_clock::now();
     
+    // Calculate the computation duration
+    std::chrono::duration<double> duration = computation_end - computation_start;
+
+    // Output the computation duration
+    std::cout << "Computation Finished in: " << duration.count() << " seconds\n";
+
     // free up memory. Note that we don't free up our final log of solutions.
     cudaFree(filterGPU);
     cudaFree(initialImpactsGPU);
@@ -593,17 +609,32 @@ int main(int argc, char* argv[]) {
 
     
     // figure out how many solutions we have.
-    printf("writing to file...\n");
+    
     int nSolutionsCPU = 0;
     cudaMemcpyFromSymbol(&nSolutionsCPU, nSolutions, sizeof(int), 0, cudaMemcpyDeviceToHost);
     printf("%d solutions found!\n", nSolutionsCPU);
 
-    
+    printf("Copying Solutions to CPU...\n");
+    // Start the clock
+    auto copying_start = std::chrono::high_resolution_clock::now();
+
     // get the solutions from the GPU to the CPU.
     struct ImpactData* finalImpactLog = (struct ImpactData*)std::malloc(nSolutionsCPU * sizeof(struct ImpactData));
     cudaMemcpy(finalImpactLog, finalImpactsGPU, nSolutionsCPU * sizeof(struct ImpactData), cudaMemcpyDeviceToHost);
 
+    // End the clock
+    auto copying_end = std::chrono::high_resolution_clock::now();
+
+    // Calculate the copying duration
+    duration = copying_end - copying_start;
     
+    // Output the copying duration
+    std::cout << "Copying Finished in: " << duration.count() << " seconds\n";
+
+    std::cout << "Writing to file...\n";
+    // Start the clock
+    auto writing_start = std::chrono::high_resolution_clock::now();
+
     // ok, at this point all our GPU shit is over and we've got a bunch of solutions in a table. It's time
     // to start writing this shit into a file.
     std::ofstream wf(outFile);
@@ -618,6 +649,14 @@ int main(int argc, char* argv[]) {
     }
     wf.close();
 
+    // End the clock
+    auto writing_end = std::chrono::high_resolution_clock::now();
+
+    // Calculate the writing duration
+    duration = writing_end - writing_start;
+
+    // Output the writing duration
+    std::cout << "Writing Finished in: " << duration.count() << " seconds\n";
     
     // free up memory.
     std::free(arrivalList);

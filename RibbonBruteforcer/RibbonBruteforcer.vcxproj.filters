@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{c9bbfe52-bdfc-4244-b9dc-b20ee37d4ac4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{e2523d77-7438-4ba6-b09c-5f3af8d5ec4b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Common\Camera.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\CommonBruteforcerStructs.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Floors.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Movement.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Stick.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Surface.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Trig.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Vmath.cuh">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\Common\Camera.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Floors.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Movement.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Stick.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Surface.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\Trig.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\Common\VMath.cu">
+      <Filter>Source</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
