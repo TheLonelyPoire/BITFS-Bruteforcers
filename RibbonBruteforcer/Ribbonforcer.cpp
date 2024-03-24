@@ -58,6 +58,8 @@ int main(int argc, char* argv[]) {
     float deltaz = tenkpos[2] - startpos[2];
     float distance = sqrtf(deltax * deltax + deltaz * deltaz);
     
+    std::cout << "Distance: " << distance << "\n";
+
     // such as the range of velocities to check, ie, velocities that get you to the target with attainable pyramid tilts.
     float velmin = (4.0f * distance) / (1.0f + nymax);
     float velmax = (4.0f * distance) / (1.0f + nymin);
@@ -107,14 +109,22 @@ int main(int argc, char* argv[]) {
     std::cout << "Initialization Complete.\n";
     std::cout << "Running Ribbonforcer...\n";
 
-    std::string outFile = "RibbonResults.csv";
-    std::ofstream wf(outFile);
+    std::string outResultsFile = "RibbonResults.csv";
+    std::string outStickInfoFile = "HighSpeedSticks.csv";
+    
+    std::ofstream wf(outResultsFile);
+    std::ofstream wfstick(outStickInfoFile);
+
     wf << std::fixed;
     wf << "Start Velocity,Cam Yaw,End Velocity" << std::endl;
+
+    wfstick << std::fixed;
+    wfstick << "x,y\n";
 
     int outer_loop_iters = (int)(velmax - velmin) / 10;
     int loop_counter = 0;
     for (int v = ((int)velmin / 10); v <= ((int)velmax / 10); v++) {
+    //for (int v = 27663; v <= 27689; v++) { // STRIP OF INTEREST
         
         if (loop_counter % 10 == 0) {
             std::cout << "\rIteration " << loop_counter << "/" << outer_loop_iters;
@@ -129,6 +139,7 @@ int main(int argc, char* argv[]) {
             }
 
             float bestspeed = 0.0f;
+            StickTableData* beststick;
             for (int i = 0; i < 6236; i++) {
                 
                 FancySlideInfo tenkslide;
@@ -149,7 +160,7 @@ int main(int argc, char* argv[]) {
                 AirInfo tenkair;
                 bool land = false;
                 for (int qf = 1; qf <= 12; qf++) {
-                    if (!sim_airstep(((qf % 4 == 1) ? tenkslide.endPos : tenkair.endPos), ((qf % 4 == 1) ? tenkslide.endSpeed : tenkair.endSpeed), tenkslide.endFacingAngle, (qf % 4 == 1), tenkair)) {
+                    if (!sim_airstep(((qf == 1) ? tenkslide.endPos : tenkair.endPos), ((qf == 1) ? tenkslide.endSpeed : tenkair.endSpeed), tenkslide.endFacingAngle, (qf % 4 == 1), tenkair)) {
                         break;
                     }
                     
@@ -162,8 +173,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
-                if (!land)
-                {
+                if (!land) {
                     continue;
                 }
 
@@ -171,7 +181,7 @@ int main(int argc, char* argv[]) {
                 float floorheight;
                 int floorIdx = find_floor(tenkair.endPos, &floor, floorheight, floors, total_floors);
 
-                if (floorIdx != 27 && floorIdx != 30) {
+                if (floorIdx < 27 || floorIdx > 32) {
                     continue;
                 }
                 // and that we're stably walking against OOB.
@@ -183,16 +193,22 @@ int main(int argc, char* argv[]) {
                 // sweet we got a solution, if the speed is better than our best, make it our best speed.
                 if (tenkair.endSpeed < bestspeed) {
                     bestspeed = tenkair.endSpeed;
+                    beststick = &stickTab[i];
                 }   
+                
             }
 
             // now that we know the best speed associated with the given ingoing speed and camera yaw, log it.
             wf << vel << ", " << yaw << ", " << bestspeed << std::endl;
+
+            if(bestspeed <= -7.0e-6)
+                wfstick << beststick->stickX << "," << beststick->stickY << "\n";
         }
 
         loop_counter++;
     }
     wf.close();
+    wfstick.close();
     std::cout << "\nRibbonforcer Complete.\n";
     return 0;
 }
