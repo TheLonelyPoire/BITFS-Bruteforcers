@@ -93,6 +93,8 @@ namespace BITFS {
                 counter++;
             }
         }
+
+        std::cout << "Initialized " << counter << " Stick Table Entries!\n";
     }
 
 

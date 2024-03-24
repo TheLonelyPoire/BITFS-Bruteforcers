@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
 
             float bestspeed = 0.0f;
             StickTableData* beststick;
-            for (int i = 0; i < 6236; i++) {
+            for (int i = 0; i < NUM_STICK_TABLE_ENTRIES_BACKWARDS; i++) {
                 
                 FancySlideInfo tenkslide;
                 if (!sim_slide(stickTab[i], tenkpos, vel, vel * sm64_sins(angle), vel * sm64_coss(angle), (int)angle, (int)angle, yaw, false, tenkslide)){

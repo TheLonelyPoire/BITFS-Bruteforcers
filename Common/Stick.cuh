@@ -5,6 +5,9 @@
 
 #include "CommonBruteforcerStructs.hpp"
 
+#define NUM_STICK_TABLE_ENTRIES_FULL 20129
+#define NUM_STICK_TABLE_ENTRIES_BACKWARDS 10128
+
 namespace BITFS {
 
 	extern __device__ StickTableData stickTabG[20129];
