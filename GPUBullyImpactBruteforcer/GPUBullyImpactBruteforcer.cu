@@ -18,6 +18,7 @@
 #include "BullyImpactStructs.hpp"
 
 # define MAX_INITIALS_PER_ARRIVAL 5000000
+# define MAX_UNIQUE 10000
 # define MAX_GOOD_IMPACTS_PER_ARRIVAL 500000
 # define MAX_IMPACTS 1000000
 
@@ -28,7 +29,11 @@ using namespace BITFS;
 // state of a bully if it looks good and isn't a duplicate. goodImpactsLog is going to be where we store how long the bully is stable 
 // for. finalImpactsLog is going to be where we accumulate all our solutions in. nInitials and nImpacts are incremented to tell us
 // how far in the impact logs to look for, and nSolutions is incremented to tell us how big the final impact log is going to be.
-__device__ bool* masterFilter;
+__device__ int* scratchpadAlpha;
+__device__ int* scratchpadBeta;
+__device__ int* scratchpadGamma;
+__device__ int nUnchecked;
+__device__ int nChecked;
 __device__ BullyData* initialImpactsLog;
 __device__ int nInitials;
 __device__ SecondaryData* goodImpactsLog;
@@ -92,7 +97,6 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
     return solution;
 
 }
-
 
 
 
@@ -167,29 +171,14 @@ __device__ int stability_frames(BullyData bully, int ticks) {
 
 
 
-
-__global__ void copy_pointers_to_gpu(bool* p1, BullyData* p2, SecondaryData* p3, ImpactData* p4) {
-    masterFilter = p1;
-    initialImpactsLog = p2;
-    goodImpactsLog = p3;
-    finalImpactsLog = p4;
+__global__ void copy_pointers_to_gpu(BullyData* p1, SecondaryData* p2, ImpactData* p3, int* p4, int* p5, int* p6) {
+    initialImpactsLog = p1;
+    goodImpactsLog = p2;
+    finalImpactsLog = p3;
+    scratchpadAlpha = p4;
+    scratchpadBeta = p5;
+    scratchpadGamma = p6;
 }
-
-
-
-
-// takes the bloom filter that's on the GPU and purifies it by wiping it clean with all 0's.
-__global__ void purify_filter() {
-
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= 65536) {
-        return;
-    }
-    masterFilter[idx] = false;
-
-    
-}
-
 
 
 
@@ -202,7 +191,7 @@ __global__ void purify_filter() {
 // to take a promising solution and find the bully positions that produce that exact solution.
 __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, int nx, int nz, float minx, float minz, float gran) {
 
-    
+
     // get the number of increments in the x and z direction from the thread id. The % nz is intended.
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nx * nz) {
@@ -210,7 +199,7 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
     }
     int overx = idx % nx;
     int overz = (idx - overx) / nx;
-    
+
     // load up our bully data.
     struct BullyData bully;
     bully.posBully[0] = minx + (overx * gran);
@@ -245,25 +234,6 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
     }
 
 
-    // now that we know we can hit the bully and give it a good speed and the pivot stays in the main universe
-    // and it rounds off to the FST location, we hash it to get four locations in the bloom filter. 
-    // Check them to eliminate duplicates (two bully positions which produce the same impact)
-    // I just filled the last piece of the hash function with some random shit.
-    // TODO: Comment back in
-    /*int locations[4];
-    bool unique = false;
-    hash(bully.velBully, (float)bully.angle, 23462432.0f, locations, 16);
-    for (int k = 0; k < 4; k++) {
-        if (!masterFilter[locations[k]]) {
-            unique = true;
-            masterFilter[locations[k]] = true;
-        }
-    }
-    if (!unique) {
-        return;
-    }*/
-
-
     // increment our solution counter and record our solution.
     int solIdx = atomicAdd(&nInitials, 1);
     if (solIdx > MAX_INITIALS_PER_ARRIVAL) {
@@ -292,7 +262,7 @@ __global__ void time_evolution(int size) {
 
     
     // simulate the bully time evolution and throw it out if the bully is sufficiently unstable (< 400 frames ie about 15 seconds)
-    int duration = stability_frames(initialImpactsLog[idx], 200);
+    int duration = stability_frames(initialImpactsLog[scratchpadGamma[idx]], 200);
     if (duration < 400) {
         return;
     }
@@ -314,7 +284,6 @@ __global__ void time_evolution(int size) {
 // adds the data to our ever-growing solution list. identifier tells us which mario-arrival to link the bully data up with.
 __global__ void append_info(ApproachData approach, int size) {
 
-
     // initialize our counter
     int counter = 0;
 
@@ -331,7 +300,7 @@ __global__ void append_info(ApproachData approach, int size) {
 
         // start off by snagging the data we need.
         SecondaryData* info = &(goodImpactsLog[i]);
-        BullyData* bully = &(initialImpactsLog[info->tag]);
+        BullyData* bully = &(initialImpactsLog[scratchpadGamma[info->tag]]);
 
 
         // write data to the structs
@@ -351,6 +320,86 @@ __global__ void append_info(ApproachData approach, int size) {
 
     // and increase the total number of solutions we have logged.
     nSolutions += counter;
+}
+
+__global__ void fill_to_alpha(bool first, int size) {
+    
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) {
+        return;
+    }
+
+    // initialize with the identity function first off, and on successive rounds, you're copying scratchpad beta contents
+    // into scratchpad alpha.
+    if (first) {
+        scratchpadAlpha[idx] = idx;
+    }
+    else {
+        scratchpadAlpha[idx] = scratchpadBeta[idx];
+    }
+}
+
+
+
+
+__global__ void add_to_gamma(int size, int samples) {
+    
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) {
+        return;
+    }
+
+
+    // spacing is the distance from each point in the sample set to the next. me is the position within scratchpad alpha
+    // that is being considered. Assume you're not a duplicate until proven otherwise.
+    int spacing = size / samples;
+    int me = idx * spacing;
+    bool duplicate = false;
+
+
+    // iterate over stuff earlier in the sample set than you to see if you're a duplicate.
+    // you're a duplicate if the bully speed and angle you're associated with match the bully speed and angle of something
+    // earlier in the sample set than you.
+    for (int i = 0; i < idx; i++) {
+        if (initialImpactsLog[scratchpadAlpha[me]].velBully == initialImpactsLog[scratchpadAlpha[i * spacing]].velBully && initialImpactsLog[scratchpadAlpha[me]].angle == initialImpactsLog[scratchpadAlpha[i * spacing]].angle) {
+            return;
+        }
+    }
+
+
+    // fill in scratchpad gamma.
+    int solIdx = atomicAdd(&nChecked, 1);
+    if (solIdx > MAX_UNIQUE) {
+        return;
+    }
+    scratchpadGamma[solIdx] = scratchpadAlpha[me];
+}
+
+
+
+
+__global__ void filter_to_beta(int alphasize, int gammasize) {
+    
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= alphasize) {
+        return;
+    }
+
+
+    // iterate over stuff in gamma to see whether you're a duplicate.
+    for (int i = 0; i < gammasize; ++i) {
+        if (initialImpactsLog[scratchpadAlpha[idx]].velBully == initialImpactsLog[scratchpadGamma[i]].velBully && initialImpactsLog[scratchpadAlpha[idx]].angle == initialImpactsLog[scratchpadGamma[i]].angle) {
+            return;
+        }
+    }
+
+
+    // fill in scratchpad beta.
+    int solIdx = atomicAdd(&nUnchecked, 1);
+    if (solIdx > alphasize) {
+        return;
+    }
+    scratchpadBeta[solIdx] = scratchpadAlpha[idx];
 }
 
 
@@ -482,10 +531,14 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Cuda Mallocs Starting...\n";
 
-    // initialize the memory for the bloom filter, unique initial impacts, good impacts (those which persist a long time)
+    // initialize the memory for the scratchpads, unique initial impacts, good impacts (those which persist a long time)
     // and the final impact log.
-    bool* filterGPU;
-    cudaMalloc((void**)&filterGPU, 65536 * sizeof(bool));
+    int* scratchpadAlphaGPU;
+    cudaMalloc((void**)&scratchpadAlphaGPU, MAX_INITIALS_PER_ARRIVAL * sizeof(int));
+    int* scratchpadBetaGPU;
+    cudaMalloc((void**)&scratchpadBetaGPU, MAX_INITIALS_PER_ARRIVAL * sizeof(int));
+    int* scratchpadGammaGPU;
+    cudaMalloc((void**)&scratchpadGammaGPU, MAX_UNIQUE * sizeof(int));
     BullyData* initialImpactsGPU;
     cudaMalloc((void**)&initialImpactsGPU, MAX_INITIALS_PER_ARRIVAL * sizeof(BullyData));
     SecondaryData* goodImpactsGPU;
@@ -496,8 +549,8 @@ int main(int argc, char* argv[]) {
     // BullyData* initialImpactsCPU = (BullyData*) std::malloc(sizeof(BullyData) * MAX_INITIALS_PER_ARRIVAL);
 
     
-    // and get those pointers onto the GPU.
-    copy_pointers_to_gpu << <1, 1 >> > (filterGPU, initialImpactsGPU, goodImpactsGPU, finalImpactsGPU);
+   // and get those pointers onto the GPU.
+    copy_pointers_to_gpu << <1, 1 >> > (initialImpactsGPU, goodImpactsGPU, finalImpactsGPU, scratchpadAlphaGPU, scratchpadBetaGPU, scratchpadGammaGPU);
     
     // we'll be taking the overlap of the boxes "stuff within an Linfinity distance of 63 from Mario" and "stuff within an
     // Linfinity distance of 16 from the bully" to get our candidates for perturbed bully positions. Initialize a bunch of floats
@@ -541,10 +594,6 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        // start off by washing the bloom filter clean so it's filled with all 0's.
-        int nBloomSlots = (65536 + nThreads - 1) / nThreads;
-        purify_filter << <nBloomSlots, nThreads >> > ();
-
         // we'll be testing nx * nz possible bully positions which *might* snap to the FST position after an impact.
         // so we set up the blocks, initialize to 0 solutions, push the solution counter to the GPU, test the bully positions
         // with the initial_assessment function, and pull the solution counter back out of the GPU. Bloom filtering to eliminate
@@ -567,18 +616,59 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Initial Solutions Found.\n";
 
-        // we'll be testing (number of solutions to the first stage) bully positions which have promise, to see
+        // and now for the black magic! We start off with everything unchecked and nothing checked. Make nChecked on the GPU be 0.
+        int nUncheckedCPU = nInitialsCPU;
+        int nCheckedCPU = 0;
+        cudaMemcpyToSymbol(nChecked, &nCheckedCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+        bool first = true;
+        int blocksforAlpha = (nUncheckedCPU + nThreads - 1) / nThreads;
+        fill_to_alpha << <blocksforAlpha, nThreads >> > (true, nUncheckedCPU);
+
+        // While we still have stuff that isn't equivalent to something in our list of equivalence class representatives in
+        // scratchpad Gamma... keep going.
+        while (nUncheckedCPU > 0) {
+
+            // copy the contents of beta over to alpha, or initialize alpha if it's the first loop. But if it's the first loop
+            // then afterwards note that the first loop is done.
+            int blocksforAlpha = (nUncheckedCPU + nThreads - 1) / nThreads;
+            fill_to_alpha << <blocksforAlpha, nThreads >> > (first, nUncheckedCPU);
+            if (first) {
+                first = false;
+            }
+
+            // work out the number of points in our sample set. Basically, it starts off with the square root of the
+            // number of unchecked points, but past that the sample size will tend to be the same as the number of
+            // entries in scratchpad Gamma, doubling each time. Or if that's too big, it just tests everything that's left.
+            // Then, nChecked (number of equivalence class representatives) is pulled out to the CPU so we know how big
+            // our segment-of-interest on scratchpad Gamma is.
+            int samples = max((int)sqrtf((float)nUncheckedCPU), min(nUncheckedCPU, nCheckedCPU));
+            int blocksforGamma = (samples + nThreads - 1) / nThreads;
+            add_to_gamma << <blocksforGamma, nThreads >> > (nUncheckedCPU, samples);
+            cudaMemcpyFromSymbol(&nCheckedCPU, nChecked, sizeof(int), 0, cudaMemcpyDeviceToHost);
+
+            // initialize the number of uncheckeds to 0 on the GPU, filter out some stuff on scratchpad Alpha, and
+            // then pull the number of uncheckeds (on beta) out so we can see how many unchecked entries are left. If 0, exit.
+            int blocksforBeta = (nUncheckedCPU + nThreads - 1) / nThreads;
+            int nBetaCPU = 0;
+            cudaMemcpyToSymbol(nUnchecked, &nBetaCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+            filter_to_beta << <blocksforBeta, nThreads >> > (nUncheckedCPU, nCheckedCPU);
+            cudaMemcpyFromSymbol(&nBetaCPU, nUnchecked, sizeof(int), 0, cudaMemcpyDeviceToHost);
+            nUncheckedCPU = nBetaCPU;
+        }
+
+
+        // we'll be testing (number of entries in scratchpad Gamma) bully positions which have promise, to see
         // whether they indeed snap to the FST position after impact, and how long they remain stable there. Same thing.
         // Set up the blocks, initialize to 0 solutions, push the solution counter to GPU, time-evolve the bully, and
         // pull the solution counter back out. Bloom filtering isn't done because there's negligible probability of having
         // two distinct impacts produce identical end states.
-        int nSecondBlocks = (nInitialsCPU + nThreads - 1) / nThreads;
+        int nSecondBlocks = (nCheckedCPU + nThreads - 1) / nThreads;
         int nImpactsCPU = 0;
-        cudaMemcpyToSymbol (nImpacts, &nImpactsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
-        time_evolution << <nSecondBlocks, nThreads >> > (nInitialsCPU);
-        cudaMemcpyFromSymbol (&nImpactsCPU, nImpacts, sizeof(int), 0, cudaMemcpyDeviceToHost);
+        cudaMemcpyToSymbol(nImpacts, &nImpactsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+        time_evolution << <nSecondBlocks, nThreads >> > (nCheckedCPU);
+        cudaMemcpyFromSymbol(&nImpactsCPU, nImpacts, sizeof(int), 0, cudaMemcpyDeviceToHost);
 
-        
+
         // again, clip if too many solutions and continue if no solutions.
         if (nImpactsCPU > MAX_GOOD_IMPACTS_PER_ARRIVAL) {
             fprintf(stderr, "Warning: The number of good impacts has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
@@ -588,14 +678,14 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        
+
         // append the data to the master log of solutions.
         append_info << <1, 1 >> > (arrivalList[i], nImpactsCPU);
     }
-    
+
     // End the clock
     auto computation_end = std::chrono::high_resolution_clock::now();
-    
+
     // Calculate the computation duration
     std::chrono::duration<double> duration = computation_end - computation_start;
 
@@ -603,13 +693,15 @@ int main(int argc, char* argv[]) {
     std::cout << "Computation Finished in: " << duration.count() << " seconds\n";
 
     // free up memory. Note that we don't free up our final log of solutions.
-    cudaFree(filterGPU);
     cudaFree(initialImpactsGPU);
     cudaFree(goodImpactsGPU);
+    cudaFree(scratchpadAlphaGPU);
+    cudaFree(scratchpadBetaGPU);
+    cudaFree(scratchpadGammaGPU);
 
-    
+
     // figure out how many solutions we have.
-    
+
     int nSolutionsCPU = 0;
     cudaMemcpyFromSymbol(&nSolutionsCPU, nSolutions, sizeof(int), 0, cudaMemcpyDeviceToHost);
     printf("%d solutions found!\n", nSolutionsCPU);
@@ -627,7 +719,7 @@ int main(int argc, char* argv[]) {
 
     // Calculate the copying duration
     duration = copying_end - copying_start;
-    
+
     // Output the copying duration
     std::cout << "Copying Finished in: " << duration.count() << " seconds\n";
 
@@ -657,13 +749,13 @@ int main(int argc, char* argv[]) {
 
     // Output the writing duration
     std::cout << "Writing Finished in: " << duration.count() << " seconds\n";
-    
+
     // free up memory.
     std::free(arrivalList);
     std::free(finalImpactLog);
     cudaFree(finalImpactsGPU);
-    
-    
+
+
     // end
     printf("Complete!");
     return 0;
