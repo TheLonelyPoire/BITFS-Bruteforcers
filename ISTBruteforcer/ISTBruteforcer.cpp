@@ -34,6 +34,7 @@ __device__ int nArrivals;
 __device__ PhaseThreeInfo* landingLog;
 __device__ int nLandings;
 
+__device__ int testI = -1;
 
 
 __global__ void copy_pointers_to_gpu(PhaseOneInfo* p1, PhaseTwoInfo* p2, PhaseThreeInfo* p3) {
@@ -413,12 +414,13 @@ __global__ void air_simulate(int nDeparturesCPU, float defacto, BullyData cam) {
 __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, int maxy, float speedthresh) {
 
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= nArrivalsCPU * 6236) {
+    if (idx >= nArrivalsCPU * NUM_STICK_TABLE_ENTRIES_BACKWARDS) { // 10128 is the number of stick table entries when the backwards parameter is true
         return;
     }
 
     int tag = idx % nArrivalsCPU;
-    int i = (idx - tag) / 6236;
+    int i = (idx - tag) / nArrivalsCPU;
+
 
     // automatically throw out things if the stick position isn't an acceptable one.
     if (stickTabG[i].stickX < minx || stickTabG[i].stickX > maxx || stickTabG[i].stickY < miny || stickTabG[i].stickY > maxy) {
@@ -741,7 +743,7 @@ main(int argc, char* argv[]) {
                 printf("(%f,%f,%f)\n", norm[0], norm[1], norm[2]);
             
                 // and proceed further to simulate the landings.
-                int nThirdBlocks = (nArrivalsCPU * 6236 + nThreads - 1) / nThreads;
+                int nThirdBlocks = (nArrivalsCPU * NUM_STICK_TABLE_ENTRIES_BACKWARDS + nThreads - 1) / nThreads;
                 int nLandingsCPU = 0;
                 cudaMemcpyToSymbol (nLandings, &nLandingsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
                 tenk_simulate<< <nThirdBlocks, nThreads >> > (nArrivalsCPU, minstickx, maxstickx, minsticky, maxsticky, speedthresh);
