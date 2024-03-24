@@ -5,6 +5,25 @@
 
 namespace BITFS {
 
+	__host__ __device__ void vec3_copy(float* to, float* from) {
+		to[0] = from[0];
+		to[1] = from[1];
+		to[2] = from[2];
+	}
+
+	__host__ __device__ void vec3_normalize(float* dest) {
+		float invsqrt = 1.0f / sqrtf(dest[0] * dest[0] + dest[1] * dest[1] + dest[2] * dest[2]);
+		dest[0] *= invsqrt;
+		dest[1] *= invsqrt;
+		dest[2] *= invsqrt;
+	}
+
+	__host__ __device__ void vec3_cross(float* dest, float* a, float* b) {
+		dest[0] = a[1] * b[2] - b[1] * a[2];
+		dest[1] = a[2] * b[0] - b[2] * a[0];
+		dest[2] = a[0] * b[1] - b[0] * a[1];
+	}
+
 	__host__ __device__ float find_dis(float* firstPos, float* secondPos) {
 		return sqrtf((firstPos[0] - secondPos[0]) * (firstPos[0] - secondPos[0]) + (firstPos[2] - secondPos[2]) * (firstPos[2] - secondPos[2]));
 	}

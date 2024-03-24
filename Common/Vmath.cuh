@@ -5,6 +5,12 @@
 
 namespace BITFS {
 
+	__host__ __device__ void vec3_copy(float* to, float* from);
+
+	__host__ __device__ void vec3_normalize(float* dest);
+
+	__host__ __device__ void vec3_cross(float* dest, float* a, float* b);
+
 	__host__ __device__ float find_dis(float* firstPos, float* secondPos);
 
 	//  Computes a dot product for 2D vectors. There's probably a c++ function for this.

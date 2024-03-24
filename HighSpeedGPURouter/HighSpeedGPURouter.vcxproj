@@ -53,7 +53,6 @@
     <ClInclude Include="..\Common\Surface.cuh" />
     <ClInclude Include="..\Common\Trig.cuh" />
     <ClInclude Include="..\Common\VMath.cuh" />
-    <ClInclude Include="HighSpeedRouterConstants.hpp" />
     <ClInclude Include="HighSpeedRouterStructs.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

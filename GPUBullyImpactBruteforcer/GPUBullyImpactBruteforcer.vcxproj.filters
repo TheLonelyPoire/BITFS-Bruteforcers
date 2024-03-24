@@ -21,7 +21,7 @@
     <ClInclude Include="..\Common\BloomFilter.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\Common\Vmath.cuh">
+    <ClInclude Include="..\Common\VMath.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -40,5 +40,6 @@
     <CudaCompile Include="..\Common\VMath.cu">
       <Filter>Source</Filter>
     </CudaCompile>
+    <CudaCompile Include="GPUBullyImpactBruteforcer.cu" />
   </ItemGroup>
 </Project>

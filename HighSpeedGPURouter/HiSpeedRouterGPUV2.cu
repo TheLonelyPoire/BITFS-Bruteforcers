@@ -20,10 +20,16 @@
 #include "../Common/Trig.cuh"
 #include "../Common/VMath.cuh"
 
-#include "HighSpeedRouterConstants.hpp"
 #include "HighSpeedRouterStructs.hpp"
 
 using namespace BITFS;
+
+# define MAX_FIRST_SLIDES 10000
+# define MAX_SECOND_SLIDES 10000
+# define MAX_THIRD_SLIDES 10000
+# define MAX_FOURTH_SLIDES 100000
+
+# define BULLY_HEIGHT_THRESHOLD -2866.0f
 
 __device__ MotionData13* firstSlides;
 __device__ int nFirstSlides;

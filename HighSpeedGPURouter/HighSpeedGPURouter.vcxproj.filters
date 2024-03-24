@@ -64,9 +64,6 @@
     <ClInclude Include="..\Common\BloomFilter.cuh">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="HighSpeedRouterConstants.hpp">
-      <Filter>Headers</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Headers">

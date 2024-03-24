@@ -28,7 +28,7 @@
     <ClInclude Include="..\Common\BloomFilter.cuh" />
     <ClInclude Include="..\Common\IOUtils.hpp" />
     <ClInclude Include="..\Common\Trig.cuh" />
-    <ClInclude Include="..\Common\Vmath.cuh" />
+    <ClInclude Include="..\Common\VMath.cuh" />
     <ClInclude Include="BullyImpactStructs.hpp" />
   </ItemGroup>
   <ItemGroup>
