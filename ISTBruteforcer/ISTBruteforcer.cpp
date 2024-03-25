@@ -3,7 +3,9 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
+#include <filesystem>
 #include <cmath>
+#include <chrono>
 #include "cuda.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
@@ -21,6 +23,7 @@
 #include "ISTStructs.hpp"
 
 using namespace BITFS;
+namespace fs = std::filesystem;
 
 #define MAX_DEPARTURES 1000000
 #define MAX_ARRIVALS 1000000
@@ -35,6 +38,16 @@ __device__ PhaseThreeInfo* landingLog;
 __device__ int nLandings;
 
 __device__ int testI = -1;
+
+
+// Returns the timestamp of the argument as a string with the format MONTH_DAY_HOUR_MINUTE.
+std::string get_timestamp(std::chrono::system_clock::time_point tp)
+{
+    std::time_t time_t = std::chrono::system_clock::to_time_t(tp);
+    std::tm* tm = std::localtime(&time_t);
+
+    return std::to_string(tm->tm_year + 1900) + "_" + std::to_string(tm->tm_mon + 1) + "_" + std::to_string(tm->tm_mday) + "_" + std::to_string(tm->tm_hour) + "_" + std::to_string(tm->tm_min);
+}
 
 
 __global__ void copy_pointers_to_gpu(PhaseOneInfo* p1, PhaseTwoInfo* p2, PhaseThreeInfo* p3) {
@@ -363,7 +376,10 @@ __global__ void air_simulate(int nDeparturesCPU, float defacto, BullyData cam) {
     Surface* floor;
     float floorheight;
     int floorIdx = find_floor(frameonepos, &floor, floorheight, floorsG, total_floors);
-    if (floorIdx == -1 || floorheight > frameonepos[1] - 100.0f) {
+    if (floorIdx == -1) {
+        return;
+    }
+    if(floorheight > frameonepos[1] - 100.0f) {
         return;
     }
 
@@ -503,12 +519,16 @@ main(int argc, char* argv[]) {
     // and then we count up by num in all three coordinates, at a certain float granularity.
     // we know we're on Mythra, and we know we're dealing with the upper-right quadrant where the normal is
     // +X and -Z. So minx and minz should be positive and negative, respectively.
-    float minx = 0.1f;
+    float minx = 0.17f;
     float miny = 0.8f;
-    float minz = -0.5f;
-    float gran = 0.001f;
+    float minz = -0.49f;
+
+    float grany = 0.001f;
+    float granx = 0.00025f;
+    float granz = 0.00025f;
+
     int numx = 200;
-    int numy = 100;
+    int numy = 50;
     int numz = 200;
 
     // initialize the stick ranges we're dealing with, and platform slope ranges we're interested in, and speed threshold to beat.
@@ -518,7 +538,7 @@ main(int argc, char* argv[]) {
     int minsticky = -128;
     int maxsticky = -20;
     float mindefacto = 0.8725;
-    float maxdefacto = 0.8745;
+    float maxdefacto = 0.8765;
     float speedthresh = -7.0e+06;
 
     // initialize threads and the bully state and cheat by storing camera data in another bully state.
@@ -533,7 +553,12 @@ main(int argc, char* argv[]) {
     cam.posBully[2] = 500.0f;
 
 
-    std::string outFile = "ISTResults.csv";
+    auto startTime = std::chrono::system_clock::now();
+    std::string timestamp = get_timestamp(startTime);
+
+    std::string outRunInfoFile = "runInformation.txt";
+    std::string outFullSolutionsFile = "ISTResults.csv";
+    std::string outFileNormalStages = "normalStagesReached.bin";
 
     bool verbose = false;
 
@@ -541,8 +566,8 @@ main(int argc, char* argv[]) {
         if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
             printf("BitFS IST Brute Forcer.\n");
             printf("This program accepts the following options:\n\n");
-            printf("-g <granularity>: The granularity of samples in all directions.\n");
-            printf("             Default: %f\n", gran);
+            printf("-gran <gx> <gy> <gz>: The granularity of samples in the x, y, and z directions.\n");
+            printf("             Default: %f %f %f\n", granx, grany, granz);
             printf("-num <num_x> <num_y> <num_z>: The number of samples in the x, y, and z directions starting from the min coordinates.\n");
             printf("             Default: %d %d %d\n", numx, numy, numz);
             printf("-min <min_x> <min_y> <min_z>: The minimum x, y, and z coordinates for the platform normal.\n");
@@ -556,16 +581,18 @@ main(int argc, char* argv[]) {
             printf("-bp <pos_x> <pos_y> <pos_z>: Bully's starting position.\n");
             printf("             Default: %f %f %f\n", bully.posBully[0], bully.posBully[1], bully.posBully[2]);
             printf("-o: Path to the output file.\n");
-            printf("    Default: %s\n", outFile.c_str());
+            printf("    Default: %s\n", outFullSolutionsFile.c_str());
             printf("-v: Verbose mode. Prints all parameters used in brute force.\n");
             printf("    Default: off\n");
             printf("-h --help: Prints this text.\n");
             exit(0);
         }
-        else if (!strcmp(argv[i], "-g")) {
-            gran = std::stof(argv[i + 1]);
+        else if (!strcmp(argv[i], "-gran")) {
+            granx = std::stof(argv[i + 1]);
+            grany = std::stof(argv[i + 2]);
+            granz = std::stof(argv[i + 3]);
 
-            i += 1;
+            i += 3;
         }
         else if (!strcmp(argv[i], "-num")) {
             numx = std::stoi(argv[i + 1]);
@@ -610,14 +637,14 @@ main(int argc, char* argv[]) {
             i += 3;
         }
         else if (!strcmp(argv[i], "-o")) {
-            outFile = argv[i + 1];
+            outFullSolutionsFile = argv[i + 1];
             i += 1;
         }
         else if (!strcmp(argv[i], "-v")) {
             verbose = true;
         }
         if (verbose) {
-            printf("Normal Granularity: %f\n", gran);
+            printf("Normal Granularity: (%f, %f, %f)\n", granx, grany, granz);
             printf("Number of Samples: (%d, %d, %d)\n", numx, numy, numz);
             printf("Origin of Samples: (%f, %f, %f)\n", minx, miny, minz);
             printf("Defacto Multiplier Bounds: (%f, %f)\n", mindefacto, maxdefacto);
@@ -627,9 +654,48 @@ main(int argc, char* argv[]) {
         }
     }
 
-    std::ofstream wf(outFile);
-    wf << std::fixed;
-    wf << "X, Y, Z" << std::endl;
+    // Attempt to create the directory
+    std::string dir_name = "output/" + timestamp + "/";
+    try {
+        std::filesystem::create_directory(dir_name);
+        std::cout << "Run directory \'" << dir_name << "\' created successfully." << std::endl;
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Failed to create directory: " << e.what() << std::endl;
+    }
+
+    // Run information filestream
+    std::ofstream wfRunInformation(dir_name + outRunInfoFile);
+    wfRunInformation << "Norm Min Y: " << miny << "\n";
+    wfRunInformation << "Norm Min X: " << minx << "\n";
+    wfRunInformation << "Norm Min Z: " << minz << "\n";
+
+    wfRunInformation << "Norm Num Y: " << numy << "\n";
+    wfRunInformation << "Norm Num X: " << numx << "\n";
+    wfRunInformation << "Norm Num Z: " << numz << "\n";
+
+    wfRunInformation << "Granularity Y: " << grany << "\n";
+    wfRunInformation << "Granularity X: " << granx << "\n";
+    wfRunInformation << "Granularity Z: " << granz << "\n";
+
+    wfRunInformation << "Defacto Multiplier Bounds: " << mindefacto << "," << maxdefacto << "\n";
+
+    wfRunInformation << "Stick Bounds X: " << minstickx << "," << maxstickx << "\n";
+    wfRunInformation << "Stick Bounds Y: " << minsticky << "," << maxsticky << "\n";
+
+    wfRunInformation << "Camera Position: " << cam.posBully[0] << "," << cam.posBully[1] << "," << cam.posBully[2] << "\n";
+    wfRunInformation << "Bully Position: " << bully.posBully[0] << "," << bully.posBully[1] << "," << bully.posBully[2] << "\n";
+
+    wfRunInformation.close();
+
+
+    // Full solution normal CSV filstream
+    std::ofstream wfSolutionsCSV(dir_name + outFullSolutionsFile);
+    wfSolutionsCSV << std::fixed;
+    wfSolutionsCSV << "X, Y, Z" << std::endl;
+
+    // Normal Stages binary output filestream
+    std::ofstream wfNormalStages(dir_name + outFileNormalStages, std::ios::out | std::ios::binary);
 
     // standard GPU setup
     struct PhaseOneInfo* departuresGPU;
@@ -650,17 +716,22 @@ main(int argc, char* argv[]) {
     initialise_floorsG << <1, 1 >> > ();
     init_stick_tablesG << <1, 1 >> >(true);
 
+    char* normalStages;
+    normalStages = (char*)std::calloc(sizeof(char), numy * numx * numz);
+
     // begin iterating!
     for (int ny = 0; ny < numy; ny++) {
         std::cout << "ny = " << ny << "\n";
         for (int nx = 0; nx < numx; nx++) {
             for (int nz = 0; nz < numz; nz++) {
                 
+                int norm_index = nz + (nx + (ny * numx)) * numz;
+
                 // initialize the platform normal right before the squish cancel frame
                 float norm[3];
-                norm[0] = minx + nx * gran;
-                norm[1] = miny + ny * gran;
-                norm[2] = minz + nz * gran;
+                norm[0] = minx + nx * granx;
+                norm[1] = miny + ny * grany;
+                norm[2] = minz + nz * granz;
 
                 // automatically throw it out if we're in the wrong quadrant
                 if (norm[0] < 0.0f || norm[2] > 0.0f) {
@@ -707,7 +778,8 @@ main(int argc, char* argv[]) {
                 }
 
                 // printf("(%f,%f,%f)\n", norm[0], norm[1], norm[2]);
-                
+                normalStages[norm_index] = 1;
+
                 // sweet, time to start bruteforcing!
                 int nFirstBlocks = (4096 + nThreads - 1) / nThreads;
                 int nDeparturesCPU = 0;
@@ -722,6 +794,8 @@ main(int argc, char* argv[]) {
                 if (nDeparturesCPU == 0) {
                     continue;
                 }
+
+                normalStages[norm_index] = 2;
 
                 // printf("1");
 
@@ -741,6 +815,7 @@ main(int argc, char* argv[]) {
 
                 printf("2: ");
                 printf("(%f,%f,%f)\n", norm[0], norm[1], norm[2]);
+                normalStages[norm_index] = 3;
             
                 // and proceed further to simulate the landings.
                 int nThirdBlocks = (nArrivalsCPU * NUM_STICK_TABLE_ENTRIES_BACKWARDS + nThreads - 1) / nThreads;
@@ -757,23 +832,28 @@ main(int argc, char* argv[]) {
                 }
 
                 printf("3 it's a hit!\n");
+                normalStages[norm_index] = 4;
 
                 // There's room to actually extract the data and write it in a CSV. The problem is that I think there will
                 // be much data per xyz that actually gets a solution because a lot more stuff gets to the final stage
                 // than gets to the final stage in a FST bruteforcer. So I'm leaving off the data extraction and logging
                 // till another day, and instead we'll just write the xyz of solutions in a CSV so we can make a black-and-white
                 // graph of solutions, as a crappy stopgap that should suffice.
-                wf << norm[0] << ", " << norm[1] << ", " << norm[2] << std::endl;
+                wfSolutionsCSV << norm[0] << ", " << norm[1] << ", " << norm[2] << std::endl;
             
             
             }
         }
     }
-    wf.close();
+    wfSolutionsCSV.close();
 
     cudaFree(departuresGPU);
     cudaFree(arrivalsGPU);
     cudaFree(landingsGPU);
+
+    wfNormalStages.write(normalStages, numy * numx * numz);
+    free(normalStages);
+    wfNormalStages.close();
 
     printf("Complete!");
 

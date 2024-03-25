@@ -59,5 +59,6 @@
     <CudaCompile Include="..\Common\VMath.cu">
       <Filter>Source</Filter>
     </CudaCompile>
+    <CudaCompile Include="ISTBruteforcer.cpp" />
   </ItemGroup>
 </Project>
