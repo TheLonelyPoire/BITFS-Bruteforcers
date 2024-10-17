@@ -29,7 +29,7 @@ using namespace BITFS;
 # define MAX_THIRD_SLIDES 10000
 # define MAX_FOURTH_SLIDES 100000
 
-# define BULLY_HEIGHT_THRESHOLD -2866.0f
+# define BULLY_HEIGHT_THRESHOLD -2838.0f
 
 __device__ MotionData13* firstSlides;
 __device__ int nFirstSlides;
@@ -592,9 +592,9 @@ int main(int argc, char* argv[]) {
 
     // changeable
     float cameraPosition[3];
-    cameraPosition[0] = -8657.244141f;
-    cameraPosition[1] = -2304.527832f;
-    cameraPosition[2] = 29007.324219f;
+    cameraPosition[0] = -7577.0f;
+    cameraPosition[1] = -1678.4967041015625f;
+    cameraPosition[2] = 1017.4176635742188f;
     // changeable
     float firstPosition[3];
     firstPosition[0] = -464816.0f;
@@ -603,7 +603,7 @@ int main(int argc, char* argv[]) {
     // changeable
     float firstSpeed = -1218989824.0f;
     // changeable
-    float targetSpeed = 6.0e+08 * (73.0f / 53.0f);
+    float targetSpeed = 1.0e+08;
 
     int nThreads = 256;
 
@@ -673,9 +673,9 @@ int main(int argc, char* argv[]) {
 
     TargetLog target;
     target.minSpeed = targetSpeed;
-    target.posBully[0] = -3120.0f;
+    target.posBully[0] = -3104.0f;
     target.posBully[1] = -2976.0f;
-    target.posBully[2] = -896.0f;
+    target.posBully[2] = -928.0f;
     target.bullySpeed = 30000;
     target.bullyMovingYaw = 11732;
     target.posCam[0] = cameraPosition[0];

@@ -103,7 +103,7 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
 // This takes a bully and time-evolves it for up to "ticks" ticks of the HAU-clock. If the bully "survives" (read: stays in the FST
 // position when it's in the main universe, and doesn't zip off to a PU) for x ticks of the HAU-clock then this function spits out 
 // x * 16 as an estimate for the number of frames the bully is stable for.
-__device__ int stability_frames(BullyData bully, int ticks) {
+__device__ int stability_frames(BullyData bully, int ticks, float fstX, float fstZ) {
 
     
     // we aren't keeping track of y elevation, so we have a bunch of floats.
@@ -153,7 +153,7 @@ __device__ int stability_frames(BullyData bully, int ticks) {
         if ( (short)(int)faroob[0] > -8192 && (short)(int)faroob[0] < 8192 && (short)(int)faroob[1] > -8192 && (short)(int)faroob[1] < 8192) {
             return i * 16;
         }
-        if (fabs(location[0] + 3120.0f) > 0.1f || fabs(location[1] + 896.0f) > 0.1f) {
+        if (fabs(location[0] - fstX) > 0.1f || fabs(location[1] - fstZ) > 0.1f) {
             return i * 16;
         }
 
@@ -221,14 +221,14 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
 
     // throw out if the angle impact parity is odd (because that moves the pivot) or the bully velocity is too low (<400 million)
     // or too high (>1 billion).
-    if (bully.angle % 2 == 1 || bully.velBully < 4.0e+08 || bully.velBully > 1.0e+09) {
+    if (bully.angle % 2 == 1 || bully.velBully < 2.50e+08 || bully.velBully > 1.0e+09) {
         return;
     }
 
 
     // see if the bully returns to its FST location. stability_frames(bully, 1) would be 16 if 
     // the bully returns to the FST location and 0 otherwise.
-    bool toFST = (stability_frames(bully, 1) > 0);
+    bool toFST = (stability_frames(bully, 1, bullyCentral.posBully[0], bullyCentral.posBully[2]) > 0);
     if (!toFST) {
         return;
     }
@@ -261,9 +261,9 @@ __global__ void time_evolution(int size) {
     }
 
     
-    // simulate the bully time evolution and throw it out if the bully is sufficiently unstable (< 400 frames ie about 15 seconds)
+    // simulate the bully time evolution and throw it out if the bully is sufficiently unstable (< 300 frames ie about 10 seconds)
     int duration = stability_frames(initialImpactsLog[scratchpadGamma[idx]], 200);
-    if (duration < 400) {
+    if (duration < 300) {
         return;
     }
 
@@ -466,9 +466,9 @@ int main(int argc, char* argv[]) {
     
     // initialize the prototype bully data. The X and Z are absolutely pinned down but the Y, angle, and velocity, may be messed with.
     struct BullyData bullyCentral;
-    bullyCentral.posBully[0] = -3120.0f;
+    bullyCentral.posBully[0] = -3104.0f;
     bullyCentral.posBully[1] = -2976.0f;
-    bullyCentral.posBully[2] = -896.0f;
+    bullyCentral.posBully[2] = -928.0f;
     bullyCentral.angle = 11732;
     bullyCentral.velBully = 30000.0f;
 

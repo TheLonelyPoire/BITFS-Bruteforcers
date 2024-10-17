@@ -197,7 +197,7 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
             continue;
         }
         // junk everything that doesn't get 1.5B or more speed.
-        if (crudeTenkslide.endSpeed < -2.147e+09 || crudeTenkslide.endSpeed > -1.5e+09){
+        if (crudeTenkslide.endSpeed < -2.147e+09 || crudeTenkslide.endSpeed > -1.25e+09){
             continue;
         }
         // and now that we've verified that the 10k stick position is basically sane, NOW it's time to start
@@ -235,7 +235,7 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
                 continue;
             }
             // junk stuff that isn't above 1.5B speed.
-            if (tenkslide.endSpeed < -2.147e+09 || tenkslide.endSpeed > -1.5e+09){
+            if (tenkslide.endSpeed < -2.147e+09 || tenkslide.endSpeed > -1.25e+09){
                 continue;
             }
             // the 10k must end up in the air.
@@ -492,15 +492,15 @@ bool crude_check (AllData* dataPoint) {
 int main(int argc, char* argv[]) {
     
     float cameraPosition[3];
-    cameraPosition[0] = -1700.0f;
-    cameraPosition[1] = -2300.0f;
-    cameraPosition[2] = 500.0f;
+    cameraPosition[0] = -7577.0f;
+    cameraPosition[1] = -1678.4967041015625f;
+    cameraPosition[2] = 1017.4176635742188f;
     float polePosition[3];
     polePosition[0] = 6605.0f;
     polePosition[1] = -2970.0f;
     polePosition[2] = 266.0f;
-    int highSpeed = 4232700;
-    int lowSpeed = 4232600;
+    int highSpeed = 4300000;
+    int lowSpeed = 3900000;
     
     unsigned int numMaxSolutions = 100;
        
