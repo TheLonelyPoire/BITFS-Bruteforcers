@@ -28,6 +28,24 @@ namespace fs = std::filesystem;
 #define MAX_DEPARTURES 1000000
 #define MAX_ARRIVALS 1000000
 #define MAX_LANDINGS 1000000
+#define MAX_TOTAL 1000000
+
+struct AllInfo {
+    float startpos[3];
+    int startvel;
+    int hau;
+    float f1pos[3];
+    float tenkpos[3];
+    float tenkvelin;
+    int camyaw;
+    float landpos[3];
+    int pux;
+    int puz;
+    float landvel;
+    int platid;
+    int stickX;
+    int stickY;
+};
 
 
 __device__ PhaseOneInfo* departureLog;
@@ -36,6 +54,7 @@ __device__ PhaseTwoInfo* arrivalLog;
 __device__ int nArrivals;
 __device__ PhaseThreeInfo* landingLog;
 __device__ int nLandings;
+__device__ AllInfo* totalLog;
 
 __device__ int testI = -1;
 
@@ -50,20 +69,21 @@ std::string get_timestamp(std::chrono::system_clock::time_point tp)
 }
 
 
-__global__ void copy_pointers_to_gpu(PhaseOneInfo* p1, PhaseTwoInfo* p2, PhaseThreeInfo* p3) {
+__global__ void copy_pointers_to_gpu(PhaseOneInfo* p1, PhaseTwoInfo* p2, PhaseThreeInfo* p3, AllInfo* p4) {
     departureLog = p1;
     arrivalLog = p2;
     landingLog = p3;
+    totalLog = p4;
 }
 
 
 void craft_matrix(float* matrix, float* norm, float* origin) {
-    
+
     float lateralDir[3];
     float leftDir[3];
     float forwardDir[3];
     float upDir[3];
-    
+
     lateralDir[0] = 0.0f;
     lateralDir[1] = 0.0f;
     lateralDir[2] = 1.0f;
@@ -78,8 +98,8 @@ void craft_matrix(float* matrix, float* norm, float* origin) {
     vec3_normalize(forwardDir);
 
     matrix[0] = leftDir[0];
-	matrix[1] = leftDir[1];
-	matrix[2] = leftDir[2];
+    matrix[1] = leftDir[1];
+    matrix[2] = leftDir[2];
     matrix[3] = 0.0f;
 
     matrix[4] = upDir[0];
@@ -99,13 +119,13 @@ void craft_matrix(float* matrix, float* norm, float* origin) {
 }
 
 
-    
+
 void fill_coords(short* coords, float* norm, float* origin, short* defaulttri) {
-    
+
     float m[16];
     craft_matrix(m, norm, origin);
     for (int i = 0; i < 3; i++) {
-        
+
         float vx = defaulttri[3 * i + 0];
         float vy = defaulttri[3 * i + 1];
         float vz = defaulttri[3 * i + 2];
@@ -117,45 +137,45 @@ void fill_coords(short* coords, float* norm, float* origin, short* defaulttri) {
 }
 
 
-    
+
 void craft_triangle(Surface* floor, short* coords) {
     *floor = Surface(coords[0], coords[1], coords[2], coords[3], coords[4], coords[5], coords[6], coords[7], coords[8]);
 }
 
 
-    
+
 float approach_by_increment(float goal, float src, float inc) {
-	float newVal;
+    float newVal;
 
-	if (src <= goal) {
-		if (goal - src < inc) {
-			newVal = goal;
-		}
-		else {
-			newVal = src + inc;
-		}
-	}
-	else if (goal - src > -inc) {
-		newVal = goal;
-	}
-	else {
-		newVal = src - inc;
-	}
+    if (src <= goal) {
+        if (goal - src < inc) {
+            newVal = goal;
+        }
+        else {
+            newVal = src + inc;
+        }
+    }
+    else if (goal - src > -inc) {
+        newVal = goal;
+    }
+    else {
+        newVal = src - inc;
+    }
 
-	return newVal;
+    return newVal;
 }
 
 
-    
+
 void platform_update(float* norm) {
     norm[0] = approach_by_increment(0.0f, norm[0], 0.01f);
     norm[1] = approach_by_increment(1.0f, norm[1], 0.01f);
     norm[2] = approach_by_increment(0.0f, norm[2], 0.01f);
-    
+
 }
 
 
-    
+
 // fills the height with the height we'd snap up to if we were at a suitable height to interact with the floor triangle
 // and lava otherwise. Returns true if our floor is the floor triangle of interest, and false otherwise.
 __device__ bool on_surface(Surface tri, float* position, float* height) {
@@ -177,9 +197,9 @@ __device__ bool on_surface(Surface tri, float* position, float* height) {
     if ((tri.vertices[2][2] - z) * (tri.vertices[0][0] - tri.vertices[2][0]) - (tri.vertices[2][0] - x) * (tri.vertices[0][2] - tri.vertices[2][2]) < 0) {
         return false;
     }
-    
+
     float elevation = -(x * tri.normal[0] + tri.normal[2] * z + tri.origin_offset) / tri.normal[1];
-    
+
     if (y - (elevation + -78.0f) < 0.0f) {
         return false;
     }
@@ -189,7 +209,7 @@ __device__ bool on_surface(Surface tri, float* position, float* height) {
 }
 
 
-    
+
 // given an angle in HAU's, and a bully position, this is where Mario gets pushed to.
 __device__ void pushed_to(float* position, BullyData bully, int hau) {
     position[0] = bully.posBully[0] + 113.0f * gSineTableG[hau];
@@ -198,10 +218,10 @@ __device__ void pushed_to(float* position, BullyData bully, int hau) {
 }
 
 
-    
+
 // this checks whether there is indeed a place that Mario can be to get pushed to his indicated position.
 __device__ bool angle_check(float* position, BullyData bully, Surface floorone, Surface floortwo) {
-    
+
     // we want to test whether we're under the floor triangles or not. We'll spuriously get declared as "not on the floor triangle"
     // if we're too low, so we boost up the height a little bit.
     // also, midspot is the furthest spot at which we can interact with the bully, 63 units away.
@@ -240,7 +260,7 @@ __device__ bool angle_check(float* position, BullyData bully, Surface floorone, 
 }
 
 
-    
+
 // simulates Mario getting squishpushed. Returns true if he moves off the pyramid, at over 100 height, and the pyramid tilts
 // back under him. Updates the position as it goes.
 __device__ bool squish_simulator(Surface floortwo, Surface floorthree, Surface ceil, float* position) {
@@ -257,7 +277,7 @@ __device__ bool squish_simulator(Surface floortwo, Surface floorthree, Surface c
     float defacto = 1.0f;
     float height;
 
-    
+
     // during a quarterframe, you update your position. You may or may not be on the pyramid platform.
     // if you're on it, update your height. If you're not, and it's the first QF or your position is too low, you lose bc lava snap.
     // if you're not, and it's a later QF and your position is high enough, you win if the platform tilts back under you.
@@ -294,8 +314,8 @@ __device__ void compute_vel_bounds(float defacto, float* start, int* bounds) {
     float rightp = (start[1] + 78.0f - (-2661.0f)) / ((-3071.0f) - (-2661.0f));
     float leftbound = leftp * (-4607.0f) + (1.0f - leftp) * (-4453.0f);
     float rightbound = rightp * (-4607.0f) + (1.0f - rightp) * (-4453.0f);
-    bounds[0] = floorf( (4.0f / (defacto + 1.0f) ) * ( ( (-start[0] + 2.0f * 65536.0f + leftbound) / gSineTableG[1021] ) + 0.25f) );
-    bounds[1] = ceilf( (4.0f / (defacto + 1.0f) ) * ( ( (-start[0] + 2.0f * 65536.0f + rightbound) / gSineTableG[1021] ) + 0.25f) );
+    bounds[0] = floorf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + leftbound) / gSineTableG[1021]) + 0.25f));
+    bounds[1] = ceilf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + rightbound) / gSineTableG[1021]) + 0.25f));
 }
 
 
@@ -379,7 +399,7 @@ __global__ void air_simulate(int nDeparturesCPU, float defacto, BullyData cam) {
     if (floorIdx == -1) {
         return;
     }
-    if(floorheight > frameonepos[1] - 100.0f) {
+    if (floorheight > frameonepos[1] - 100.0f) {
         return;
     }
 
@@ -440,7 +460,7 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
 
     // automatically throw out things if the stick position isn't an acceptable one.
     if (stickTabG[i].stickX < minx || stickTabG[i].stickX > maxx || stickTabG[i].stickY < miny || stickTabG[i].stickY > maxy) {
-        return;  
+        return;
     }
 
     // then fetch data.
@@ -450,12 +470,12 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
     // is the same, and we only know the HAU of arrival. So we assume 1021 * 16 + 8, because that's halfway through the band of
     // AU's that correspond to HAU 1021.
     struct FancySlideInfo tenk;
-    if(!sim_slide(stickTabG[i], p2_data->tenkpos, p2_data->tenkvelin, p2_data->tenkvelin * gSineTableG[1021], p2_data->tenkvelin * gCosineTableG[1021], 1021 * 16 + 8, 1021 * 16 + 8, p2_data->camyaw, false, tenk)) {
-        return;   
+    if (!sim_slide(stickTabG[i], p2_data->tenkpos, p2_data->tenkvelin, p2_data->tenkvelin * gSineTableG[1021], p2_data->tenkvelin * gCosineTableG[1021], 1021 * 16 + 8, 1021 * 16 + 8, p2_data->camyaw, false, tenk)) {
+        return;
     };
-    
+
     // Junk it if the solution doesn't get sufficient negative speed.
-    if (tenk.endSpeed >= speedthresh){
+    if (tenk.endSpeed >= speedthresh) {
         return;
     }
 
@@ -471,10 +491,10 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
         if (!sim_airstep(((qf == 1) ? tenk.endPos : tenkair.endPos), ((qf == 1) ? tenk.endSpeed : tenkair.endSpeed), tenk.endFacingAngle, (qf % 4 == 1), tenkair)) {
             return;
         }
-        if(assess_floor(tenkair.endPos) == 0) {
+        if (assess_floor(tenkair.endPos) == 0) {
             return;
         }
-        else if(assess_floor(tenkair.endPos) == 2 || assess_floor(tenkair.endPos) == 3) {
+        else if (assess_floor(tenkair.endPos) == 2 || assess_floor(tenkair.endPos) == 3) {
             break;
         }
     }
@@ -486,10 +506,10 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
     if (floorIdx < 27 || floorIdx > 32) {
         return;
     }
-    
+
     // and that we're stably walking against OOB.
     if (!stability_check(tenkair.endPos, tenkair.endSpeed, tenk.endFacingAngle)) {
-        return; 
+        return;
     };
 
     // and lo, a solution hath been found.
@@ -508,6 +528,41 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
     p3_data->stickX = correct_stick(stickTabG[i].stickX);
     p3_data->stickY = correct_stick(stickTabG[i].stickY);
     p3_data->id = tag;
+}
+
+__global__ void collect_solutions(int nLandingsCPU) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= nLandingsCPU) {
+        return;
+    }
+
+    struct PhaseThreeInfo* p3_data = &(landingLog[idx]);
+    struct PhaseTwoInfo* p2_data = &(arrivalLog[p3_data->id]);
+    struct PhaseOneInfo* p1_data = &(departureLog[p2_data->id]);
+    struct AllInfo* output = &(totalLog[idx]);
+
+    output->hau = p1_data->hau;
+    output->startpos[0] = p1_data->startpos[0];
+    output->startpos[1] = p1_data->startpos[1];
+    output->startpos[2] = p1_data->startpos[2];
+    output->startvel = p1_data->vel;
+    output->f1pos[0] = p2_data->f1pos[0];
+    output->f1pos[1] = p2_data->f1pos[1];
+    output->f1pos[2] = p2_data->f1pos[2];
+    output->tenkpos[0] = p2_data->tenkpos[0];
+    output->tenkpos[1] = p2_data->tenkpos[1];
+    output->tenkpos[2] = p2_data->tenkpos[2];
+    output->tenkvelin = p2_data->tenkvelin;
+    output->camyaw = p2_data->camyaw;
+    output->stickX = p3_data->stickX;
+    output->stickY = p3_data->stickY;
+    output->landpos[0] = p3_data->landpos[0];
+    output->landpos[1] = p3_data->landpos[1];
+    output->landpos[2] = p3_data->landpos[2];
+    output->pux = p3_data->pux;
+    output->puz = p3_data->puz;
+    output->platid = p3_data->platid;
+    output->landvel = p3_data->landvel;
 }
 
 
@@ -657,7 +712,7 @@ main(int argc, char* argv[]) {
     // Attempt to create the directory
     std::string dir_name = "output/" + timestamp + "/";
     try {
-        std::filesystem::create_directory(dir_name);
+        std::filesystem::create_directories(dir_name);
         std::cout << "Run directory \'" << dir_name << "\' created successfully." << std::endl;
     }
     catch (const std::filesystem::filesystem_error& e) {
@@ -692,7 +747,14 @@ main(int argc, char* argv[]) {
     // Full solution normal CSV filstream
     std::ofstream wfSolutionsCSV(dir_name + outFullSolutionsFile);
     wfSolutionsCSV << std::fixed;
-    wfSolutionsCSV << "X, Y, Z" << std::endl;
+    wfSolutionsCSV << "X, Y, Z, ";
+    wfSolutionsCSV << "HAUBullyPush, DepartureSpeed, ";
+    wfSolutionsCSV << "DepartureX, DepartureY, DepartureZ, ";
+    wfSolutionsCSV << "Frame1X, Frame1Y, Frame1Z, ";
+    wfSolutionsCSV << "10kX, 10kY, 10kZ, ";
+    wfSolutionsCSV << "10kSpeed, 10kCamYaw, 10kStickX, 10kStickY, ";
+    wfSolutionsCSV << "LandX, LandY, LandZ, ";
+    wfSolutionsCSV << "LandPUX, LandPUZ, LandFloorID, LandSpeed" << std::endl;
 
     // Normal Stages binary output filestream
     std::ofstream wfNormalStages(dir_name + outFileNormalStages, std::ios::out | std::ios::binary);
@@ -704,17 +766,19 @@ main(int argc, char* argv[]) {
     cudaMalloc((void**)&arrivalsGPU, MAX_ARRIVALS * sizeof(struct PhaseTwoInfo));
     struct PhaseThreeInfo* landingsGPU;
     cudaMalloc((void**)&landingsGPU, MAX_LANDINGS * sizeof(struct PhaseThreeInfo));
+    struct AllInfo* totalGPU;
+    cudaMalloc((void**)&totalGPU, MAX_TOTAL * sizeof(struct AllInfo));
 
 
     // we only have one floor triangle and one ceiling triangle to worry about, so initialize them. origin is the origin of Mythra.
     short floortri[9] = { 307, 307, -306, -306, 307, -306, -306, 307, 307 };
-    short ceiltri[9] = {-306, 307, 307, -306, 307, -306, 0, 0, 0};
-    float origin[3] = {-2866.0f, -3225.0f, -715.0f};
+    short ceiltri[9] = { -306, 307, 307, -306, 307, -306, 0, 0, 0 };
+    float origin[3] = { -2866.0f, -3225.0f, -715.0f };
 
     // initialize floors and stick tables and GPU pointers.
-    copy_pointers_to_gpu << <1, 1 >> > (departuresGPU, arrivalsGPU, landingsGPU);
+    copy_pointers_to_gpu << <1, 1 >> > (departuresGPU, arrivalsGPU, landingsGPU, totalGPU);
     initialise_floorsG << <1, 1 >> > ();
-    init_stick_tablesG << <1, 1 >> >(true);
+    init_stick_tablesG << <1, 1 >> > (true);
 
     char* normalStages;
     normalStages = (char*)std::calloc(sizeof(char), numy * numx * numz);
@@ -724,7 +788,7 @@ main(int argc, char* argv[]) {
         std::cout << "ny = " << ny << "\n";
         for (int nx = 0; nx < numx; nx++) {
             for (int nz = 0; nz < numz; nz++) {
-                
+
                 int norm_index = nz + (nx + (ny * numx)) * numz;
 
                 // initialize the platform normal right before the squish cancel frame
@@ -737,7 +801,7 @@ main(int argc, char* argv[]) {
                 if (norm[0] < 0.0f || norm[2] > 0.0f) {
                     continue;
                 }
-                
+
                 // firstnorm will be right before the SC frame, secondnorm will be the SC frame, thirdnorm will be the departure frame.
                 // so we have norm be our first normal, update it one frame to make our second normal, update it one frame to make
                 // our third normal.
@@ -783,9 +847,9 @@ main(int argc, char* argv[]) {
                 // sweet, time to start bruteforcing!
                 int nFirstBlocks = (4096 + nThreads - 1) / nThreads;
                 int nDeparturesCPU = 0;
-                cudaMemcpyToSymbol (nDepartures, &nDeparturesCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+                cudaMemcpyToSymbol(nDepartures, &nDeparturesCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
                 first_pass << <nFirstBlocks, nThreads >> > (bully, floorone, floortwo, floorthree, ceiltwo);
-                cudaMemcpyFromSymbol (&nDeparturesCPU, nDepartures, sizeof(int), 0, cudaMemcpyDeviceToHost);
+                cudaMemcpyFromSymbol(&nDeparturesCPU, nDepartures, sizeof(int), 0, cudaMemcpyDeviceToHost);
                 // throw usual errors if too many or too few solutions.
                 if (nDeparturesCPU > MAX_DEPARTURES) {
                     fprintf(stderr, "Warning: The number of departures has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
@@ -802,9 +866,9 @@ main(int argc, char* argv[]) {
                 // and now proceed further, to simulate the departures.
                 int nSecondBlocks = (nDeparturesCPU + nThreads - 1) / nThreads;
                 int nArrivalsCPU = 0;
-                cudaMemcpyToSymbol (nArrivals, &nArrivalsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
-                air_simulate<< <nSecondBlocks, nThreads >> > (nDeparturesCPU, floorthree.normal[1], cam);
-                cudaMemcpyFromSymbol (&nArrivalsCPU, nArrivals, sizeof(int), 0, cudaMemcpyDeviceToHost);
+                cudaMemcpyToSymbol(nArrivals, &nArrivalsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+                air_simulate << <nSecondBlocks, nThreads >> > (nDeparturesCPU, floorthree.normal[1], cam);
+                cudaMemcpyFromSymbol(&nArrivalsCPU, nArrivals, sizeof(int), 0, cudaMemcpyDeviceToHost);
                 if (nArrivalsCPU > MAX_ARRIVALS) {
                     fprintf(stderr, "Warning: The number of arrivals has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
                     nDeparturesCPU = MAX_ARRIVALS;
@@ -816,13 +880,13 @@ main(int argc, char* argv[]) {
                 printf("2: ");
                 printf("(%f,%f,%f)\n", norm[0], norm[1], norm[2]);
                 normalStages[norm_index] = 3;
-            
+
                 // and proceed further to simulate the landings.
                 int nThirdBlocks = (nArrivalsCPU * NUM_STICK_TABLE_ENTRIES_BACKWARDS + nThreads - 1) / nThreads;
                 int nLandingsCPU = 0;
-                cudaMemcpyToSymbol (nLandings, &nLandingsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
-                tenk_simulate<< <nThirdBlocks, nThreads >> > (nArrivalsCPU, minstickx, maxstickx, minsticky, maxsticky, speedthresh);
-                cudaMemcpyFromSymbol (&nLandingsCPU, nLandings, sizeof(int), 0, cudaMemcpyDeviceToHost);
+                cudaMemcpyToSymbol(nLandings, &nLandingsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
+                tenk_simulate << <nThirdBlocks, nThreads >> > (nArrivalsCPU, minstickx, maxstickx, minsticky, maxsticky, speedthresh);
+                cudaMemcpyFromSymbol(&nLandingsCPU, nLandings, sizeof(int), 0, cudaMemcpyDeviceToHost);
                 if (nLandingsCPU > MAX_LANDINGS) {
                     fprintf(stderr, "Warning: The number of landings has been exceeded. No more will be recorded. Increase the internal maximum to prevent this from happening.\n");
                     nLandingsCPU = MAX_LANDINGS;
@@ -834,14 +898,33 @@ main(int argc, char* argv[]) {
                 printf("3 it's a hit!\n");
                 normalStages[norm_index] = 4;
 
-                // There's room to actually extract the data and write it in a CSV. The problem is that I think there will
-                // be much data per xyz that actually gets a solution because a lot more stuff gets to the final stage
-                // than gets to the final stage in a FST bruteforcer. So I'm leaving off the data extraction and logging
-                // till another day, and instead we'll just write the xyz of solutions in a CSV so we can make a black-and-white
-                // graph of solutions, as a crappy stopgap that should suffice.
-                wfSolutionsCSV << norm[0] << ", " << norm[1] << ", " << norm[2] << std::endl;
-            
-            
+                // and write to the data file.
+                int nFourthBlocks = (nLandingsCPU + nThreads - 1) / nThreads;
+                collect_solutions << <nFourthBlocks, nThreads >> > (nLandingsCPU);
+
+                // get the solutions from the GPU to the CPU
+                struct AllInfo* endLog = (struct AllInfo*)std::malloc(nLandingsCPU * sizeof(struct AllInfo));
+                cudaMemcpy(endLog, totalGPU, nLandingsCPU * sizeof(struct AllInfo), cudaMemcpyDeviceToHost);
+
+                //now log the data. And compute the best velocity, so we can print it or route it to an output file to make
+                //pretty data visualizations.
+                float bestVel = 0.0f;
+                for (int k = 0; k < nLandingsCPU; k++) {
+
+                    if (endLog[k].landvel < bestVel) {
+                        bestVel = endLog[k].landvel;
+                    }
+
+                    wfSolutionsCSV << norm[0] << ", " << norm[1] << ", " << norm[2] << ", ";
+                    wfSolutionsCSV << endLog[k].hau << ", " << endLog[k].startvel << ", ";
+                    wfSolutionsCSV << endLog[k].startpos[0] << ", " << endLog[k].startpos[1] << ", " << endLog[k].startpos[2] << ", ";
+                    wfSolutionsCSV << endLog[k].f1pos[0] << ", " << endLog[k].f1pos[1] << ", " << endLog[k].f1pos[2] << ", ";
+                    wfSolutionsCSV << endLog[k].tenkpos[0] << ", " << endLog[k].tenkpos[1] << ", " << endLog[k].tenkpos[2] << ", ";
+                    wfSolutionsCSV << endLog[k].tenkvelin << ", " << endLog[k].camyaw << ", " << endLog[k].stickX << ", " << endLog[k].stickY << ", ";
+                    wfSolutionsCSV << endLog[k].landpos[0] << ", " << endLog[k].landpos[1] << ", " << endLog[k].landpos[2] << ", ";
+                    wfSolutionsCSV << endLog[k].pux << ", " << endLog[k].puz << ", " << endLog[k].platid << ", " << endLog[k].landvel << std::endl;
+                }
+                printf("Best Speed(%f)\n", bestVel);
             }
         }
     }
@@ -850,6 +933,7 @@ main(int argc, char* argv[]) {
     cudaFree(departuresGPU);
     cudaFree(arrivalsGPU);
     cudaFree(landingsGPU);
+    cudaFree(totalGPU);
 
     wfNormalStages.write(normalStages, numy * numx * numz);
     free(normalStages);
