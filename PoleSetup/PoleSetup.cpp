@@ -118,6 +118,9 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
     if (assess_floor(poleslide.endPos) != 1) {
         return false;
     }
+    
+    printf("----Successful Crouchslide!\n");
+    
     bool lowX = (fabs(poleslide.endPos[0]) < 10000.0f);
     bool lowZ = (fabs(poleslide.endPos[2]) < 10000.0f);
     // it gets spicy here. Pretty much, lots of ways of straining are redundant. Ie, same end speed, end sliding speeds, etc..
@@ -181,25 +184,35 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
     }
     // if we didn't land on the ground, fail.
     if (noGround) {
+        printf("----Failed Air Movement!\n");
         return false;
     }
     // if we didn't land on the one-up, fail.
     if (!on_one_up(crudePoleAir.endPos)) {
+        printf("----Didn't Hit One Up!\n");
         return false;
     }
+
+    printf("----Successful Air Movement!\n");
+
+    printf("----Number of Valid Strains: %i\n", counter);
 
     short cameraYawTen = fix(tenk_camera_yaw(dataPoint->positions.posPole, poleslide.endPos, dataPoint->positions.posCam1, stickTab[dataPoint->targets.i].angle + dataPoint->targets.cam, poleslide.endFacingAngle, trueFocus, &sPanDistance, camPos));
     // iterate over stick positions for the 10k.
     FancySlideInfo crudeTenkslide;
+    int progress_10k = 0;
+    float last10kSpeed = 0;
     for (int j = 0; j < 20129; j++) {
         // simulate 10k.
         if (!sim_slide(stickTab[j], crudePoleAir.endPos, crudePoleAir.endSpeed, crudePoleAir.endSpeed * gSineTable[poleslide.endFacingAngle >> 4], crudePoleAir.endSpeed * gCosineTable[poleslide.endFacingAngle >> 4], poleslide.endFacingAngle, poleslide.endSlidingAngle, cameraYawTen, false, crudeTenkslide)){
             continue;
         }
         // junk everything that doesn't get 1.5B or more speed.
-        if (crudeTenkslide.endSpeed < -2.147e+09 || crudeTenkslide.endSpeed > -1.25e+09){
+        if (crudeTenkslide.endSpeed < -2.147e+09 || crudeTenkslide.endSpeed > -1e+09){
             continue;
         }
+        progress_10k = std::max(1, progress_10k);
+            
         // and now that we've verified that the 10k stick position is basically sane, NOW it's time to start
         // iterating over straining positions. Iterate over them, make sure they work alright and hit the 1-up.
         for (int k = 0; k < counter; k++) {
@@ -229,31 +242,50 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
             if (!on_one_up(nextPos)) {
                 continue;
             }
+
+            progress_10k = std::max(2, progress_10k);
+
             // at this point, we know that the straining hits the 1-up platform. Simulate the 10k.
             FancySlideInfo tenkslide;
             if (!sim_slide(stickTab[j], nextPos, tableOfStrains[k].speed, tableOfStrains[k].vX, tableOfStrains[k].vZ, poleslide.endFacingAngle, poleslide.endSlidingAngle, cameraYawTen, false, tenkslide)) {
                 continue;
             }
+
+            progress_10k = std::max(3, progress_10k);
+
             // junk stuff that isn't above 1.5B speed.
-            if (tenkslide.endSpeed < -2.147e+09 || tenkslide.endSpeed > -1.25e+09){
+            if (tenkslide.endSpeed < -2.147e+09 || tenkslide.endSpeed > -1e+09){
+                last10kSpeed = tenkslide.endSpeed;
                 continue;
             }
+
+            progress_10k = std::max(4, progress_10k);
+
             // the 10k must end up in the air.
             if (assess_floor(tenkslide.endPos) != 1) {
                 continue;
             }
+            
+            progress_10k = std::max(5, progress_10k);
+
             // simulate the air movement then, and make sure it ends up on the ground.
             AirInfo tenkair;
             if (!sim_airstep(tenkslide.endPos, tenkslide.endSpeed, tenkslide.endFacingAngle, true, tenkair)) {
                 continue;
             }
+
+            progress_10k = std::max(6, progress_10k);
+
             if (assess_floor(tenkair.endPos) != 2 && assess_floor(tenkair.endPos) != 3) {
                 continue;
             }
+
+            progress_10k = std::max(7, progress_10k);
+
             // and that we're stably walking against OOB. If you want to land on a specific slice of ground
             // you can check that as well.
             bool stable = stability_check(tenkair.endPos, tenkair.endSpeed, tenkslide.endFacingAngle);
-            if (!stable) {             
+            if (!stable) {
                 continue;         
             }
             // and we've got a hit!! Celebrate, log your data.
@@ -285,8 +317,40 @@ bool fine_check(AllData* dataPoint, float* trueFocus, float sPanDistance, float*
             (dataPoint->angles).slideTenK2 = poleslide.endSlidingAngle;
             printf("HIT!\n");
             return true;
-        }  
+        }
     }
+
+    if(progress_10k >= 1) {
+        printf("----Valid Stick Position Found!\n");
+    }
+    if (progress_10k >= 2) {
+        printf("----Found strain that hits 1-Up Platform!\n");
+    }
+    if (progress_10k == 2) {
+        printf("----Failed 10k movement!\n");
+    }
+    if (progress_10k == 3) {
+        printf("----10k speed not within bounds: %f!\n", last10kSpeed);
+    }
+    if (progress_10k == 4) {
+        printf("----10k did not end in the air!\n");
+    }
+    if (progress_10k >= 5) {
+        printf("----Found successful 10k!\n");
+    }
+    if (progress_10k == 5) {
+        printf("----Failed Post-10k air movement!\n");
+    }
+    if (progress_10k == 6) {
+        printf("----Post-10k air movement did not land on ground!\n");
+    }
+    if (progress_10k >= 7) {
+        printf("----Found successful post-10k air movement!\n");
+    }
+    if (progress_10k == 7) {
+        printf("----Post-10k landing position was not stable!\n");
+    }
+
     return false;
 }
 

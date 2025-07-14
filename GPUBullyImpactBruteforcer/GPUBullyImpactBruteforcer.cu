@@ -103,7 +103,7 @@ __device__ BullyData sim_bully_collision(float* marioPos, float* bullyPos, int f
 // This takes a bully and time-evolves it for up to "ticks" ticks of the HAU-clock. If the bully "survives" (read: stays in the FST
 // position when it's in the main universe, and doesn't zip off to a PU) for x ticks of the HAU-clock then this function spits out 
 // x * 16 as an estimate for the number of frames the bully is stable for.
-__device__ int stability_frames(BullyData bully, int ticks, float fstX, float fstZ) {
+__device__ int stability_frames(BullyData bully, int ticks, float fst_bullyX, float fst_bullyZ) {
 
     
     // we aren't keeping track of y elevation, so we have a bunch of floats.
@@ -153,7 +153,7 @@ __device__ int stability_frames(BullyData bully, int ticks, float fstX, float fs
         if ( (short)(int)faroob[0] > -8192 && (short)(int)faroob[0] < 8192 && (short)(int)faroob[1] > -8192 && (short)(int)faroob[1] < 8192) {
             return i * 16;
         }
-        if (fabs(location[0] - fstX) > 0.1f || fabs(location[1] - fstZ) > 0.1f) {
+        if (fabs(location[0] - fst_bullyX) > 0.1f || fabs(location[1] - fst_bullyZ) > 0.1f) {
             return i * 16;
         }
 
@@ -251,7 +251,7 @@ __global__ void initial_assessment(ApproachData mario, BullyData bullyCentral, i
 
 
 // evolves the bullies in time to see how long they last.
-__global__ void time_evolution(int size) {
+__global__ void time_evolution(int size, float fst_bullyX, float fst_bullyZ) {
 
 
     // get the place-to-look-at from the thread id.
@@ -262,7 +262,7 @@ __global__ void time_evolution(int size) {
 
     
     // simulate the bully time evolution and throw it out if the bully is sufficiently unstable (< 300 frames ie about 10 seconds)
-    int duration = stability_frames(initialImpactsLog[scratchpadGamma[idx]], 200);
+    int duration = stability_frames(initialImpactsLog[scratchpadGamma[idx]], 200, fst_bullyX, fst_bullyZ);
     if (duration < 300) {
         return;
     }
@@ -477,7 +477,7 @@ int main(int argc, char* argv[]) {
     float granularity = 0.0078125f;
     int nThreads = 256;
     std::string outFile = "goodImpacts.csv";
-    std::string inFile = "bloomVersion2.csv";
+    std::string inFile = "fstHighSpeedOptions.csv";
     bool verbose = false;
 
     
@@ -665,7 +665,7 @@ int main(int argc, char* argv[]) {
         int nSecondBlocks = (nCheckedCPU + nThreads - 1) / nThreads;
         int nImpactsCPU = 0;
         cudaMemcpyToSymbol(nImpacts, &nImpactsCPU, sizeof(int), 0, cudaMemcpyHostToDevice);
-        time_evolution << <nSecondBlocks, nThreads >> > (nCheckedCPU);
+        time_evolution << <nSecondBlocks, nThreads >> > (nCheckedCPU, bullyCentral.posBully[0], bullyCentral.posBully[2]);
         cudaMemcpyFromSymbol(&nImpactsCPU, nImpacts, sizeof(int), 0, cudaMemcpyDeviceToHost);
 
 

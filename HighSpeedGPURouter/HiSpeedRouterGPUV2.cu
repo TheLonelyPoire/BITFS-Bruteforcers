@@ -597,11 +597,11 @@ int main(int argc, char* argv[]) {
     cameraPosition[2] = 1017.4176635742188f;
     // changeable
     float firstPosition[3];
-    firstPosition[0] = -464816.0f;
-    firstPosition[1] = -2866.0f;
-    firstPosition[2] = 1900288.0f;
+    firstPosition[0] = 15209947.0f;
+    firstPosition[1] = -2917.0f;
+    firstPosition[2] = -413925344.0f;
     // changeable
-    float firstSpeed = -1218989824.0f;
+    float firstSpeed = -1233440640.0;
     // changeable
     float targetSpeed = 1.0e+08;
 

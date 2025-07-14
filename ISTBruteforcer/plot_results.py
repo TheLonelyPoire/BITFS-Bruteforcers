@@ -50,6 +50,9 @@ def parse_run_info(directory):
             if line.startswith("Norm Num Z"):
                 norm_num_z = int(line_value)
 
+            if line.startswith("Granularity:"):
+                gran_y = gran_x = gran_z = float(line_value)
+
             if line.startswith("Granularity Y"):
                 gran_y = float(line_value)
 

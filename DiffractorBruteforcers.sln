@@ -11,8 +11,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LowSpeedPURouter", "LowSpee
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PoleSetup", "PoleSetup\PoleSetup.vcxproj", "{CF4A4618-224D-40B1-B5EB-570EE5D12109}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "THIFloorTest", "THIFloorTest\THIFloorTest.vcxproj", "{DACE92FE-7940-4077-8491-7B0CAB412E21}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CameraRepositioningRouter", "CameraRepositioningRouter\CameraRepositioningRouter.vcxproj", "{FF809B1C-F895-4F5E-ABAC-4A00420DE042}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GPUBullyImpactBruteforcer", "GPUBullyImpactBruteforcer\GPUBullyImpactBruteforcer.vcxproj", "{C17A36E1-BFFC-4797-B0D9-EC0683F2C891}"
@@ -61,14 +59,6 @@ Global
 		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Release|x64.Build.0 = Release|x64
 		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Release|x86.ActiveCfg = Release|x64
 		{CF4A4618-224D-40B1-B5EB-570EE5D12109}.Release|x86.Build.0 = Release|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Debug|x64.ActiveCfg = Debug|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Debug|x64.Build.0 = Debug|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Debug|x86.ActiveCfg = Debug|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Debug|x86.Build.0 = Debug|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Release|x64.ActiveCfg = Release|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Release|x64.Build.0 = Release|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Release|x86.ActiveCfg = Release|x64
-		{DACE92FE-7940-4077-8491-7B0CAB412E21}.Release|x86.Build.0 = Release|x64
 		{FF809B1C-F895-4F5E-ABAC-4A00420DE042}.Debug|x64.ActiveCfg = Debug|x64
 		{FF809B1C-F895-4F5E-ABAC-4A00420DE042}.Debug|x64.Build.0 = Debug|x64
 		{FF809B1C-F895-4F5E-ABAC-4A00420DE042}.Debug|x86.ActiveCfg = Debug|x64
