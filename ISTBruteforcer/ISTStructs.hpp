@@ -6,6 +6,7 @@ namespace BITFS {
         float startpos[3];
         int vel;
         int hau;
+        int haudep;
     };
 
     struct PhaseTwoInfo {

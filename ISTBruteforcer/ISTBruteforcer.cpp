@@ -1,6 +1,8 @@
 #include <fstream>
 #include <cstring>
 #include <string>
+#include <array>
+#include <vector>
 #include <unordered_map>
 #include <iostream>
 #include <filesystem>
@@ -34,6 +36,7 @@ struct AllInfo {
     float startpos[3];
     int startvel;
     int hau;
+    int haudep;
     float f1pos[3];
     float tenkpos[3];
     float tenkvelin;
@@ -304,18 +307,34 @@ __device__ bool squish_simulator(Surface floortwo, Surface floorthree, Surface c
 
 
 // this, given a defacto speed, and mario's height, computes the lower and upper bounds on Mario's speed which hit the 1-up platform.
-__device__ void compute_vel_bounds(float defacto, float* start, int* bounds) {
+__device__ void compute_vel_bounds(float defacto, float* start, int* bounds, int hau) {
 
+    float leftp;
+    float rightp;
+    float leftbound;
+    float rightbound;
     // leftbound and rightbound are, given mario's height, the leftmost and rightmost he can land on the 1-up.
     // this is done via algebra shenanigans I don't feel like explaining.
     // from this, the bounds follow by rearranging the equation
-    // start[0] + ((v * defacto / 4) + ((v-1) * 1 / 4)) * gSineTableG[1021] = 2 * 65536 + bounds.
-    float leftp = (start[1] - (-2661.0f)) / ((-3071.0f) - (-2661.0f));
-    float rightp = (start[1] + 78.0f - (-2661.0f)) / ((-3071.0f) - (-2661.0f));
-    float leftbound = leftp * (-4607.0f) + (1.0f - leftp) * (-4453.0f);
-    float rightbound = rightp * (-4607.0f) + (1.0f - rightp) * (-4453.0f);
-    bounds[0] = floorf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + leftbound) / gSineTableG[1021]) + 0.25f));
-    bounds[1] = ceilf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + rightbound) / gSineTableG[1021]) + 0.25f));
+    // start[0] + ((v * defacto / 4) + ((v-1) * 1 / 4)) * gSineTableG[hau] = 2 * 65536 + bounds.
+
+    if (hau < 2048) {
+        leftp = (start[1] - (-2661.0f)) / ((-3071.0f) - (-2661.0f));
+        rightp = (start[1] + 78.0f - (-2661.0f)) / ((-3071.0f) - (-2661.0f));
+        leftbound = leftp * (-4607.0f) + (1.0f - leftp) * (-4453.0f);
+        rightbound = rightp * (-4607.0f) + (1.0f - rightp) * (-4453.0f);
+        bounds[0] = floorf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + leftbound) / gSineTableG[hau]) + 0.25f));
+        bounds[1] = ceilf((4.0f / (defacto + 1.0f)) * (((-start[0] + 2.0f * 65536.0f + rightbound) / gSineTableG[hau]) + 0.25f));
+    }
+    // start[0] + ((v * defacto / 4) + ((v-1) * 1 / 4)) * gSineTableG[hau] = -2 * 65536 + bounds.
+    else {
+        leftp = (start[1] + 78.0f - (-3071.0f)) / ((-2661.0f) - (-3071.0f));
+        rightp = (start[1] - (-3071.0f)) / ((-2661.0f) - (-3071.0f));
+        leftbound = leftp * (-4146.0f) + (1.0f - leftp) * (-3993.0f);
+        rightbound = rightp * (-4146.0f) + (1.0f - rightp) * (-3993.0f);
+        bounds[0] = floorf((4.0f / (defacto + 1.0f)) * (((-start[0] - (2.0f * 65536.0f) + rightbound) / gSineTableG[hau]) + 0.25f));
+        bounds[1] = ceilf((4.0f / (defacto + 1.0f)) * (((-start[0] - (2.0f * 65536.0f) + leftbound) / gSineTableG[hau]) + 0.25f));
+    }
 }
 
 
@@ -344,30 +363,49 @@ __global__ void first_pass(BullyData bully, Surface floorone, Surface floortwo, 
         return;
     }
 
-    // work out the velocity bounds on whether you can arrive at the one-up.
-    float defacto = floorthree.normal[1];
-    int bounds[2];
-    compute_vel_bounds(defacto, pos, bounds);
-    if (bounds[0] > bounds[1]) {
-        return;
-    }
     // this clause shouldn't ever fire but just in case, junk stuff where your height is too low.
     if (pos[1] <= -3071.0f + 100.0f) {
         return;
     }
 
-    for (int v = bounds[0]; v <= bounds[1]; v++) {
+    // these are the hau's we can depart at. 1QPU speed (sideways, 2QF route) and sqrt(2)QPU speed (diagonal, 2QF route)
+    int hau[8];
+    hau[0] = 507;
+    hau[1] = 1021;
+    hau[2] = 1022;
+    hau[3] = 1538;
+    hau[4] = 2564;
+    hau[5] = 3074;
+    hau[6] = 3075;
+    hau[7] = 3583;
 
-        int solIdx = atomicAdd(&nDepartures, 1);
-        if (solIdx > MAX_DEPARTURES) {
-            return;
+    // work out the defacto speed multiplier.
+    float defacto = floorthree.normal[1];
+
+    // loop over hau's
+    for (int i = 0; i < 8; i++) {
+
+        // work out the velocity bounds on whether you can arrive at the one-up.
+        int bounds[2];
+        compute_vel_bounds(defacto, pos, bounds, hau[i]);
+        if (bounds[0] > bounds[1]) {
+            continue;
         }
-        struct PhaseOneInfo* data = &(departureLog[solIdx]);
-        data->startpos[0] = pos[0];
-        data->startpos[1] = pos[1];
-        data->startpos[2] = pos[2];
-        data->vel = v;
-        data->hau = idx;
+
+        for (int v = bounds[0]; v <= bounds[1]; v++) {
+
+            int solIdx = atomicAdd(&nDepartures, 1);
+            if (solIdx > MAX_DEPARTURES) {
+                return;
+            }
+            struct PhaseOneInfo* data = &(departureLog[solIdx]);
+            data->startpos[0] = pos[0];
+            data->startpos[1] = pos[1];
+            data->startpos[2] = pos[2];
+            data->vel = v;
+            data->hau = idx;
+            data->haudep = hau[i];
+        }
     }
 }
 
@@ -387,9 +425,9 @@ __global__ void air_simulate(int nDeparturesCPU, float defacto, BullyData cam) {
     // find the frame one position.
     float frameonepos[3];
     float vel = (float)info->vel;
-    frameonepos[0] = info->startpos[0] + defacto * ((vel * gSineTableG[1021]) / 4.0f);
+    frameonepos[0] = info->startpos[0] + defacto * ((vel * gSineTableG[info->haudep]) / 4.0f);
     frameonepos[1] = info->startpos[1];
-    frameonepos[2] = info->startpos[2] + defacto * ((vel * gCosineTableG[1021]) / 4.0f);
+    frameonepos[2] = info->startpos[2] + defacto * ((vel * gCosineTableG[info->haudep]) / 4.0f);
 
     // a basic sanity check on the frame one position is that, if we find the floor associated with it, the height of the floor should
     // be over 100 units below us, otherwise we'd snap to the floor. And the position shouldn't be out-of-bounds.
@@ -422,11 +460,11 @@ __global__ void air_simulate(int nDeparturesCPU, float defacto, BullyData cam) {
 
     // ok, at this point, we probably hit the 1-up platform. Time to compute the camera yaw. 
     // A critical note here is that it seems that facing angle is NOT fully pinned down by the HAU you're traveling at. 
-    // I know that the HAU is 1021 so I'll arbitrarily assume that the facing angle is 1021 * 16 + 8 (precisely halfway
-    // through the band of AU's that correspond to HAU 1021). And the 49152 corresponds to Mario facing perfectly 
+    // So I'll arbitrarily assume that the facing angle is hau * 16 + 8 (precisely halfway
+    // through the band of AU's that correspond to that hau). And the 49152 corresponds to Mario facing perfectly 
     // in the -X direction when he runs off the edge of the pyramid, which appears to be a roughly acceptable assumption to make.
     int bwee = fine_camera_yaw(info->startpos, lakitu, 49152, focus, &pan, campos, false);
-    int camyaw = tenk_camera_yaw(info->startpos, frameonepos, lakitu, 49152, (1021 * 16) + 8, focus, &pan, campos);
+    int camyaw = tenk_camera_yaw(info->startpos, frameonepos, lakitu, 49152, (info->haudep * 16) + 8, focus, &pan, campos);
 
     int solIdx = atomicAdd(&nArrivals, 1);
     if (solIdx > MAX_ARRIVALS) {
@@ -465,12 +503,13 @@ __global__ void tenk_simulate(int nArrivalsCPU, int minx, int maxx, int miny, in
 
     // then fetch data.
     struct PhaseTwoInfo* p2_data = &(arrivalLog[tag]);
+    struct PhaseOneInfo* p1_data = &(departureLog[p2_data->id]);
 
     // for simulating the 10k, we have the problem that facing angle and slide yaw can be slightly different though the HAU
-    // is the same, and we only know the HAU of arrival. So we assume 1021 * 16 + 8, because that's halfway through the band of
-    // AU's that correspond to HAU 1021.
+    // is the same, and we only know the HAU of arrival. So we assume hau * 16 + 8, because that's halfway through the band of
+    // AU's that correspond to that HAU.
     struct FancySlideInfo tenk;
-    if (!sim_slide(stickTabG[i], p2_data->tenkpos, p2_data->tenkvelin, p2_data->tenkvelin * gSineTableG[1021], p2_data->tenkvelin * gCosineTableG[1021], 1021 * 16 + 8, 1021 * 16 + 8, p2_data->camyaw, false, tenk)) {
+    if (!sim_slide(stickTabG[i], p2_data->tenkpos, p2_data->tenkvelin, p2_data->tenkvelin * gSineTableG[p1_data->haudep], p2_data->tenkvelin * gCosineTableG[p1_data->haudep], (p1_data->haudep * 16) + 8, (p1_data->haudep * 16) + 8, p2_data->camyaw, false, tenk)) {
         return;
     };
 
@@ -542,6 +581,7 @@ __global__ void collect_solutions(int nLandingsCPU) {
     struct AllInfo* output = &(totalLog[idx]);
 
     output->hau = p1_data->hau;
+    output->haudep = p1_data->haudep;
     output->startpos[0] = p1_data->startpos[0];
     output->startpos[1] = p1_data->startpos[1];
     output->startpos[2] = p1_data->startpos[2];
@@ -566,9 +606,7 @@ __global__ void collect_solutions(int nLandingsCPU) {
 }
 
 
-
-
-main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 
     // initialize base parameters. minx, miny, and minz are the lowest xyz's we're looking at.
     // and then we count up by num in all three coordinates, at a certain float granularity.
@@ -612,9 +650,11 @@ main(int argc, char* argv[]) {
     std::string timestamp = get_timestamp(startTime);
 
     std::string outRunInfoFile = "runInformation.txt";
-    std::string outFullSolutionsFile = "ISTResults.csv";
     std::string outFileNormalStages = "normalStagesReached.bin";
+    std::string outFileSolutionSpeeds = "solutionNormalSpeeds.bin";
+    std::string outFullSolutionsFile = "ISTResults.csv";
 
+    bool saveSolutions = false;
     bool verbose = false;
 
     for (int i = 1; i < argc; i++) {
@@ -635,10 +675,14 @@ main(int argc, char* argv[]) {
             printf("             Default: %f %f %f\n", cam.posBully[0], cam.posBully[1], cam.posBully[2]);
             printf("-bp <pos_x> <pos_y> <pos_z>: Bully's starting position.\n");
             printf("             Default: %f %f %f\n", bully.posBully[0], bully.posBully[1], bully.posBully[2]);
-            printf("-o: Path to the output file.\n");
-            printf("    Default: %s\n", outFullSolutionsFile.c_str());
+            printf("-o-stage <filepath>: Path to the output file.\n");
+            printf("             Default: %s\n", outFileNormalStages.c_str());
+            printf("-save-sols: Save solution information to a CSV file.\n");
+            printf("             Default: off\n");
+            printf("-o-sol <filepath>: Path to the solution information output file.\n");
+            printf("             Default: %s\n", outFullSolutionsFile.c_str());
             printf("-v: Verbose mode. Prints all parameters used in brute force.\n");
-            printf("    Default: off\n");
+            printf("             Default: off\n");
             printf("-h --help: Prints this text.\n");
             exit(0);
         }
@@ -691,22 +735,33 @@ main(int argc, char* argv[]) {
 
             i += 3;
         }
-        else if (!strcmp(argv[i], "-o")) {
+        else if (!strcmp(argv[i], "-o-stage")) {
+            outFileNormalStages = argv[i + 1];
+            i += 1;
+        }
+        else if (!strcmp(argv[i], "-save-sols")) {
+            saveSolutions = true;
+        }
+        else if (!strcmp(argv[i], "-o-sol")) {
             outFullSolutionsFile = argv[i + 1];
+            saveSolutions = true;
             i += 1;
         }
         else if (!strcmp(argv[i], "-v")) {
             verbose = true;
         }
-        if (verbose) {
-            printf("Normal Granularity: (%f, %f, %f)\n", granx, grany, granz);
-            printf("Number of Samples: (%d, %d, %d)\n", numx, numy, numz);
-            printf("Origin of Samples: (%f, %f, %f)\n", minx, miny, minz);
-            printf("Defacto Multiplier Bounds: (%f, %f)\n", mindefacto, maxdefacto);
-            printf("Stick Bounds: (%d, %d) X, (%d, %d) Y\n", minstickx, maxstickx, minsticky, maxsticky);
-            printf("Camera Position: (%f, %f, %f)\n", cam.posBully[0], cam.posBully[1], cam.posBully[2]);
-            printf("Bully Position: (%f, %f, %f)\n", bully.posBully[0], bully.posBully[1], bully.posBully[2]);
-        }
+    }
+
+
+    // If verbose flag is set, show parameter information
+    if (verbose) {
+        printf("Normal Granularity: (%f, %f, %f)\n", granx, grany, granz);
+        printf("Number of Samples: (%d, %d, %d)\n", numx, numy, numz);
+        printf("Origin of Samples: (%f, %f, %f)\n", minx, miny, minz);
+        printf("Defacto Multiplier Bounds: (%f, %f)\n", mindefacto, maxdefacto);
+        printf("Stick Bounds: (%d, %d) X, (%d, %d) Y\n", minstickx, maxstickx, minsticky, maxsticky);
+        printf("Camera Position: (%f, %f, %f)\n", cam.posBully[0], cam.posBully[1], cam.posBully[2]);
+        printf("Bully Position: (%f, %f, %f)\n", bully.posBully[0], bully.posBully[1], bully.posBully[2]);
     }
 
     // Attempt to create the directory
@@ -745,16 +800,20 @@ main(int argc, char* argv[]) {
 
 
     // Full solution normal CSV filstream
-    std::ofstream wfSolutionsCSV(dir_name + outFullSolutionsFile);
-    wfSolutionsCSV << std::fixed;
-    wfSolutionsCSV << "X, Y, Z, ";
-    wfSolutionsCSV << "HAUBullyPush, DepartureSpeed, ";
-    wfSolutionsCSV << "DepartureX, DepartureY, DepartureZ, ";
-    wfSolutionsCSV << "Frame1X, Frame1Y, Frame1Z, ";
-    wfSolutionsCSV << "10kX, 10kY, 10kZ, ";
-    wfSolutionsCSV << "10kSpeed, 10kCamYaw, 10kStickX, 10kStickY, ";
-    wfSolutionsCSV << "LandX, LandY, LandZ, ";
-    wfSolutionsCSV << "LandPUX, LandPUZ, LandFloorID, LandSpeed" << std::endl;
+    std::ofstream wfSolutionsCSV;
+
+    if (saveSolutions) {
+        wfSolutionsCSV = std::ofstream(dir_name + outFullSolutionsFile);
+        wfSolutionsCSV << std::fixed;
+        wfSolutionsCSV << "X, Y, Z, ";
+        wfSolutionsCSV << "HAUBullyPush, DepartureSpeed, DepartureHAU, ";
+        wfSolutionsCSV << "DepartureX, DepartureY, DepartureZ, ";
+        wfSolutionsCSV << "Frame1X, Frame1Y, Frame1Z, ";
+        wfSolutionsCSV << "10kX, 10kY, 10kZ, ";
+        wfSolutionsCSV << "10kSpeed, 10kCamYaw, 10kStickX, 10kStickY, ";
+        wfSolutionsCSV << "LandX, LandY, LandZ, ";
+        wfSolutionsCSV << "LandPUX, LandPUZ, LandFloorID, LandSpeed" << std::endl;
+    }
 
     // Normal Stages binary output filestream
     std::ofstream wfNormalStages(dir_name + outFileNormalStages, std::ios::out | std::ios::binary);
@@ -780,12 +839,16 @@ main(int argc, char* argv[]) {
     initialise_floorsG << <1, 1 >> > ();
     init_stick_tablesG << <1, 1 >> > (true);
 
+    // Allocate an array for storing the normal stages
     char* normalStages;
     normalStages = (char*)std::calloc(sizeof(char), numy * numx * numz);
 
+    // Define a dynamic array for storing full solution normals and their best speeds
+    std::vector<std::array<float, 4>> normalSpeeds;
+
     // begin iterating!
     for (int ny = 0; ny < numy; ny++) {
-        std::cout << "ny = " << ny << "\n";
+        std::cout << "ny = " << miny + ny * grany << "\n";
         for (int nx = 0; nx < numx; nx++) {
             for (int nz = 0; nz < numz; nz++) {
 
@@ -808,11 +871,16 @@ main(int argc, char* argv[]) {
                 float firstnorm[3];
                 float secondnorm[3];
                 float thirdnorm[3];
-                vec3_copy(firstnorm, norm);
-                platform_update(norm);
-                vec3_copy(secondnorm, norm);
-                platform_update(norm);
-                vec3_copy(thirdnorm, norm);
+
+                // tiltnorm is used to avoid modifying the norm variable so that it can be used for saving out results later.
+                float tiltnorm[3];
+                vec3_copy(tiltnorm, norm);
+
+                vec3_copy(firstnorm, tiltnorm);
+                platform_update(tiltnorm);
+                vec3_copy(secondnorm, tiltnorm);
+                platform_update(tiltnorm);
+                vec3_copy(thirdnorm, tiltnorm);
 
                 // we have the base coordinates of our triangles of interest, but they must be adjusted via our
                 // platform normal vector, so we know the floor triangles on the three frames and ceiling triangle on the SC frame.
@@ -915,20 +983,25 @@ main(int argc, char* argv[]) {
                         bestVel = endLog[k].landvel;
                     }
 
-                    wfSolutionsCSV << norm[0] << ", " << norm[1] << ", " << norm[2] << ", ";
-                    wfSolutionsCSV << endLog[k].hau << ", " << endLog[k].startvel << ", ";
-                    wfSolutionsCSV << endLog[k].startpos[0] << ", " << endLog[k].startpos[1] << ", " << endLog[k].startpos[2] << ", ";
-                    wfSolutionsCSV << endLog[k].f1pos[0] << ", " << endLog[k].f1pos[1] << ", " << endLog[k].f1pos[2] << ", ";
-                    wfSolutionsCSV << endLog[k].tenkpos[0] << ", " << endLog[k].tenkpos[1] << ", " << endLog[k].tenkpos[2] << ", ";
-                    wfSolutionsCSV << endLog[k].tenkvelin << ", " << endLog[k].camyaw << ", " << endLog[k].stickX << ", " << endLog[k].stickY << ", ";
-                    wfSolutionsCSV << endLog[k].landpos[0] << ", " << endLog[k].landpos[1] << ", " << endLog[k].landpos[2] << ", ";
-                    wfSolutionsCSV << endLog[k].pux << ", " << endLog[k].puz << ", " << endLog[k].platid << ", " << endLog[k].landvel << std::endl;
+                    if (saveSolutions) {
+                        wfSolutionsCSV << norm[0] << ", " << norm[1] << ", " << norm[2] << ", ";
+                        wfSolutionsCSV << endLog[k].hau << ", " << endLog[k].startvel << ", " << endLog[k].haudep << ", ";
+                        wfSolutionsCSV << endLog[k].startpos[0] << ", " << endLog[k].startpos[1] << ", " << endLog[k].startpos[2] << ", ";
+                        wfSolutionsCSV << endLog[k].f1pos[0] << ", " << endLog[k].f1pos[1] << ", " << endLog[k].f1pos[2] << ", ";
+                        wfSolutionsCSV << endLog[k].tenkpos[0] << ", " << endLog[k].tenkpos[1] << ", " << endLog[k].tenkpos[2] << ", ";
+                        wfSolutionsCSV << endLog[k].tenkvelin << ", " << endLog[k].camyaw << ", " << endLog[k].stickX << ", " << endLog[k].stickY << ", ";
+                        wfSolutionsCSV << endLog[k].landpos[0] << ", " << endLog[k].landpos[1] << ", " << endLog[k].landpos[2] << ", ";
+                        wfSolutionsCSV << endLog[k].pux << ", " << endLog[k].puz << ", " << endLog[k].platid << ", " << endLog[k].landvel << std::endl;
+                    }
                 }
+                normalSpeeds.push_back({ norm[0], norm[1], norm[2], bestVel });
                 printf("Best Speed(%f)\n", bestVel);
             }
         }
     }
-    wfSolutionsCSV.close();
+    if (saveSolutions) {
+        wfSolutionsCSV.close();
+    }
 
     cudaFree(departuresGPU);
     cudaFree(arrivalsGPU);
@@ -938,6 +1011,11 @@ main(int argc, char* argv[]) {
     wfNormalStages.write(normalStages, numy * numx * numz);
     free(normalStages);
     wfNormalStages.close();
+
+    std::ofstream wfSolutionSpeeds(dir_name + outFileSolutionSpeeds, std::ios::out | std::ios::binary);
+    wfSolutionSpeeds.write(reinterpret_cast<const char*>(normalSpeeds.data()),
+                           normalSpeeds.size() * sizeof(std::array<float, 4>));
+    wfSolutionSpeeds.close();
 
     printf("Complete!");
 
