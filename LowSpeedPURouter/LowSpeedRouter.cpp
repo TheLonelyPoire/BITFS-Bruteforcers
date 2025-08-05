@@ -46,15 +46,15 @@ bool move14(AllData* dataPoint, short fangle) {
     // we're going to do kind of a weird thing here. Namely, instead of iterating over HAU's and stick positions, we iterate
     // over HAU's and waiting frames!! But first, we work out exactly where we be aiming.
     float aimPoint[3];
-    aimPoint[0] = dataPoint->positions.posPole[0] - (float)(dataPoint->targets.speed) * gSineTable[dataPoint->targets.hau];
-    aimPoint[2] = dataPoint->positions.posPole[2] - (float)(dataPoint->targets.speed) * gCosineTable[dataPoint->targets.hau];
+    aimPoint[0] = dataPoint->positions.posPole[0] - dataPoint->targets.speed * gSineTable[dataPoint->targets.hau];
+    aimPoint[2] = dataPoint->positions.posPole[2] - dataPoint->targets.speed * gCosineTable[dataPoint->targets.hau];
     // and how far to where we're aiming
     float dis = find_dis(dataPoint->positions.pos14, aimPoint);
     // and make damn sure that "we attain our exact needed speed" gives you enough distance to make it close to the aiming point
     Surface* floor;
     float floorheight;
     int floorIdx = find_floor(dataPoint->positions.pos14, &floor, floorheight, floors, total_floors);
-    if (fabs(dis - (fabs((float)(dataPoint->targets.speed)) * floor->normal[1] / 4.0f)) > 150.0f) {
+    if (fabs(dis - (fabs(dataPoint->targets.speed) * floor->normal[1] / 4.0f)) > 150.0f) {
         return false;
     }
     // work out the direction from the pole to where you are now, as that approximates your facing angle
@@ -109,7 +109,7 @@ bool move14(AllData* dataPoint, short fangle) {
             AirInfo airmove;
             if(!sim_airstep(lastslide.endPos, lastslide.endSpeed, lastslide.endFacingAngle, true, airmove))
                 continue;
-            if (fabs(airmove.endSpeed - (float)(dataPoint->targets.speed)) >= 1.5f) {
+            if (fabs(airmove.endSpeed - dataPoint->targets.speed) >= 1.5f) {
                 continue;
             }
             float nextPos[3];
@@ -248,11 +248,11 @@ bool move13(AllData* dataPoint, short fangle) {
                 bool stable = stability_check(airmove.endPos, nextspeed, fineslide.endFacingAngle);
                 // also, if the speed we're trying to hit is above 0.94x our current speed, then that's bad
                 // and waiting longer won't help.
-                if (!stable || fabs((float)(dataPoint->targets.speed)) > 0.94f * fabs(nextspeed)) {
+                if (!stable || fabs(dataPoint->targets.speed) > 0.94f * fabs(nextspeed)) {
                     break;
                 }
                 // if the speed we're trying to hit is below 0.9x our current speed, that's bad, add more waiting frames.
-                if(fabs((float)(dataPoint->targets.speed)) < 0.9f * fabs(nextspeed)) {
+                if(fabs(dataPoint->targets.speed) < 0.9f * fabs(nextspeed)) {
                     continue;
                 }
                 // log data.
@@ -371,7 +371,7 @@ bool move12(AllData* dataPoint, short fangle) {
                         break;
                     }
                     // basically, if the speeds are incompatible with getting to the target with our needed speed, give up
-                    if (fmaxf(lb * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.94f)) > fminf(ub * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.9f * 0.98f * 0.98f * 0.98f))) {
+                    if (fmaxf(lb * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.94f)) > fminf(ub * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.9f * 0.98f * 0.98f * 0.98f))) {
                         break;
                     }
                     // work out where you're aiming for specifically
@@ -382,7 +382,7 @@ bool move12(AllData* dataPoint, short fangle) {
                     float dis = find_dis(airmove.endPos, destination);
                     // a better check for whether our speed is compatible with both making it to our target
                     // AND making it to the target with the speed we need.
-                    if (dis < ((1.0f + floor->normal[1]) / 4.0f) * fmaxf(lb * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.94f)) || dis > ((1.0f + floor->normal[1]) / 4.0f) * fminf(ub * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.9f * 0.98f * 0.98f * 0.98f))) {
+                    if (dis < ((1.0f + floor->normal[1]) / 4.0f) * fmaxf(lb * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.94f)) || dis > ((1.0f + floor->normal[1]) / 4.0f) * fminf(ub * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.9f * 0.98f * 0.98f * 0.98f))) {
                         continue;
                     }
                     // the counter can be uncommented and a print statement added if you want to see.
@@ -506,7 +506,7 @@ bool move11(AllData* dataPoint) {
                     break;
                 }
                 // check to see if our speed is acceptable, though admittedly this is pretty fucking arcane.
-                if (fmaxf(lb * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / 0.94f) >= fminf(ub * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.98f * 0.98f * 0.98f * 0.9f))) {
+                if (fmaxf(lb * fabs(nextspeed), fabs(dataPoint->targets.speed) / 0.94f) >= fminf(ub * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.98f * 0.98f * 0.98f * 0.9f))) {
                     break;
                 }
                 // where we're aiming for.
@@ -516,7 +516,7 @@ bool move11(AllData* dataPoint) {
                 
                 // computing the donut of "where we can reach" and "where can reach our target with the needed speed"
                 // so we can aim for the intersection.
-                DonutData glazed = donut_compute(airmove.endPos, 0.9f * ((1.0f + floor->normal[1]) / 4.0f) * fabs(nextspeed), 0.94f * ((1.0f + floor->normal[1]) / 4.0f) * fabs(nextspeed), destination, ((1.0f + 0.98f) / 4.0f) * fmaxf(lb * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / 0.94f), ((1.0f + 1.0f) / 4.0f) * fminf(ub * fabs(nextspeed), fabs((float)(dataPoint->targets.speed)) / (0.98f * 0.98f * 0.98f * 0.9f)));
+                DonutData glazed = donut_compute(airmove.endPos, 0.9f * ((1.0f + floor->normal[1]) / 4.0f) * fabs(nextspeed), 0.94f * ((1.0f + floor->normal[1]) / 4.0f) * fabs(nextspeed), destination, ((1.0f + 0.98f) / 4.0f) * fmaxf(lb * fabs(nextspeed), fabs(dataPoint->targets.speed) / 0.94f), ((1.0f + 1.0f) / 4.0f) * fminf(ub * fabs(nextspeed), fabs(dataPoint->targets.speed) / (0.98f * 0.98f * 0.98f * 0.9f)));
                 if(glazed.overlapArea < 10000.0f) {
                     continue;
                 }
@@ -569,9 +569,10 @@ int main(int argc, char* argv[]) {
     int targetPlat = 6;
     int targetPUX = 75;
     int targetPUZ = -30;
+
     // for best results, pick 2 speed closer to 0 than the first output you got from the pole thing
     // gives you more robust solutions that way.
-    int targetSpeed = -4232649;
+    float targetSpeed = -4232649;
     int targetHAU = 1272;
        
     std::string outFile = "verifiedVersion.csv";
@@ -585,7 +586,7 @@ int main(int argc, char* argv[]) {
             printf("-ms <speed>: Speed that Mario starts out with.\n");
             printf("             Default: %f\n", firstSpeed);
             printf("-ts <speed>: Speed that Mario must end near.\n");
-            printf("             Default: %d\n", targetSpeed);
+            printf("             Default: %f\n", targetSpeed);
             printf("-cp <pos_x> <pos_y> <pos_z>: Position of the camera.\n");
             printf("             Default: %f %f %f\n", cameraPosition[0], cameraPosition[1], cameraPosition[2]);
             printf("-fp <pos_x> <pos_y> <pos_z>: Mario's starting position.\n");
@@ -600,26 +601,26 @@ int main(int argc, char* argv[]) {
             exit(0);
         }
         else if (!strcmp(argv[i], "-ms")) {
-            firstSpeed = std::stoi(argv[i + 1]);
+            firstSpeed = std::stof(argv[i + 1]);
 
             i += 1;
         }
         else if (!strcmp(argv[i], "-ts")) {
-            targetSpeed = std::stoi(argv[i + 1]);
+            targetSpeed = std::stof(argv[i + 1]);
 
             i += 1;
         }
         else if (!strcmp(argv[i], "-cp")) {
-            cameraPosition[0] = std::stoi(argv[i + 1]);
-            cameraPosition[1] = std::stoi(argv[i + 2]);
-            cameraPosition[2] = std::stoi(argv[i + 3]);
+            cameraPosition[0] = std::stof(argv[i + 1]);
+            cameraPosition[1] = std::stof(argv[i + 2]);
+            cameraPosition[2] = std::stof(argv[i + 3]);
 
             i += 3;
         }
         else if (!strcmp(argv[i], "-fp")) {
-            firstPosition[0] = std::stoi(argv[i + 1]);
-            firstPosition[1] = std::stoi(argv[i + 2]);
-            firstPosition[2] = std::stoi(argv[i + 3]);
+            firstPosition[0] = std::stof(argv[i + 1]);
+            firstPosition[1] = std::stof(argv[i + 2]);
+            firstPosition[2] = std::stof(argv[i + 3]);
 
             i += 3;
         }
@@ -640,7 +641,7 @@ int main(int argc, char* argv[]) {
         }
         if (verbose) {
             printf("Mario Starting Speed: %f\n", firstSpeed);
-            printf("Target Speed: %d\n", targetSpeed);
+            printf("Target Speed: %f\n", targetSpeed);
             printf("Camera Position: (%f, %f, %f)\n", cameraPosition[0], cameraPosition[1], cameraPosition[2]);
             printf("First Position: (%f, %f, %f)\n", firstPosition[0], firstPosition[1], firstPosition[2]);
             printf("Targets(platID, PUX, PUZ, HAU): (%d, %d, %d, %d)\n", targetPlat, targetPUX, targetPUZ, targetHAU);

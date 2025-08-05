@@ -504,7 +504,7 @@ int main(int argc, char* argv[]) {
             i += 1;
         }
         else if (!strcmp(argv[i], "-vel")) {
-            bullyCentral.velBully = std::stoi(argv[i + 1]);
+            bullyCentral.velBully = std::stof(argv[i + 1]);
             i += 1;
         }
         else if (!strcmp(argv[i], "-o")) {

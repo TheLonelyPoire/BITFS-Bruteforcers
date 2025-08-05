@@ -594,9 +594,9 @@ int main(int argc, char* argv[]) {
             i += 1;
         }
         else if (!strcmp(argv[i], "-cp")) {
-            cameraPosition[0] = std::stoi(argv[i + 1]);
-            cameraPosition[1] = std::stoi(argv[i + 2]);
-            cameraPosition[2] = std::stoi(argv[i + 3]);
+            cameraPosition[0] = std::stof(argv[i + 1]);
+            cameraPosition[1] = std::stof(argv[i + 2]);
+            cameraPosition[2] = std::stof(argv[i + 3]);
 
             i += 3;
         }

@@ -56,7 +56,7 @@ namespace BITFS {
         int platKey;
         int inPUX;
         int inPUZ;
-        int speed;
+        float speed;
         int hau;
     };
 
