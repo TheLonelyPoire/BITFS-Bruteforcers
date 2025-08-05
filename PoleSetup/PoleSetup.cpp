@@ -488,11 +488,6 @@ bool crude_check (AllData* dataPoint) {
         // target position. Each integer is keyed to a particular platform that might be good for
         // our PU movement.
         for (int k = 0; k <= 6; k++) {
-            // I later realized that platform 2 is nearly impossible to get to in the first place
-            // so I just did a quick hack to skip it.
-            if (k == 2) {
-                continue;
-            }
             // assume we depart from the center of the platform in the appropriate PU, that gets a good approximation
             // of stuff.
             float center[3];
